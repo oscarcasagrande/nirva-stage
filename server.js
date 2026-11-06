@@ -8,7 +8,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const os = require('os');
 const { normalize, sanitize } = require('./lib/normalize');
+const transcripts = require('./lib/transcripts');
 
 const PORT = Number(process.env.NIRVA_PORT) || 4321;
 const HOST = process.env.NIRVA_HOST || '127.0.0.1'; // no Docker: 0.0.0.0 (a porta é publicada só em 127.0.0.1 do host)
@@ -22,6 +24,12 @@ const STATIC = { // arquivos servidos (lista fechada)
   '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/vendor/qrcode.js': ['vendor/qrcode.js', 'text/javascript; charset=utf-8'],
 };
+
+// Modo transcript (para quando a organização bloqueia hooks): --transcripts ou NIRVA_TRANSCRIPTS=1 / =<pasta>
+const TR_ENV = process.env.NIRVA_TRANSCRIPTS || '';
+const TRANSCRIPTS = process.argv.includes('--transcripts') || (TR_ENV && TR_ENV !== '0');
+const TRANSCRIPTS_DIR = TR_ENV && !['1', 'true', '0'].includes(TR_ENV) ? TR_ENV : path.join(os.homedir(), '.claude', 'projects');
+let droppedHookEvents = 0;
 
 const clients = new Set();
 const history = [];
@@ -54,7 +62,8 @@ function toItem({ name, image, state, status, ports, labels }) {
   };
 }
 function viaSocket(cb) {
-  const req = http.request({ socketPath: DOCKER_SOCK, path: '/containers/json', method: 'GET', timeout: 5000 }, (res) => {
+  const req = http.request({ socketPath: DOCKER_SOCK, path: '/containers/json', method: 'GET', timeout: 10000, headers: { host: 'docker' } }, (res) => {
+    if (res.statusCode !== 200) { res.resume(); return cb(new Error(`HTTP ${res.statusCode} do Docker`)); }
     let buf = ''; res.setEncoding('utf8');
     res.on('data', (c) => { buf += c; });
     res.on('end', () => {
@@ -88,14 +97,22 @@ function viaCli(cb) {
     cb(null, list);
   });
 }
+let dockerFails = 0, lastDockerErr = '';
 function pollDocker() {
   const useSock = fs.existsSync(DOCKER_SOCK);
   (useSock ? viaSocket : viaCli)((err, list) => {
+    if (err) {
+      dockerFails++;
+      const msg = String(err.message || err).split('\n')[0];
+      if (msg !== lastDockerErr) { lastDockerErr = msg; console.warn(`[docker] falha ao listar containers (${useSock ? 'socket' : 'comando'}): ${msg}`); }
+      // tolera falhas passageiras: mantém a última lista boa por até 3 tentativas
+      if (dockerState.available && dockerFails < 3) return setTimeout(pollDocker, 3000);
+    } else { dockerFails = 0; lastDockerErr = ''; }
     const next = err ? { available: false, list: [] } : { available: true, list };
     const key = JSON.stringify([next.available, next.list.map((c) => [c.name, c.state, c.health, c.project])]);
     dockerState = next;
     if (key !== dockerKey) { dockerKey = key; for (const res of clients) send(res, 'docker', dockerState); }
-    setTimeout(pollDocker, next.available ? 5000 : 30000);
+    setTimeout(pollDocker, next.available ? 5000 : 15000);
   });
 }
 
@@ -134,6 +151,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
     const cutoff = Date.now() - HISTORY_TTL;
     res.write('retry: 2000\n\n');
+    send(res, 'mode', { transcripts: !!TRANSCRIPTS });
     send(res, 'replay', history.filter((e) => e.ts >= cutoff));
     if (DOCKER_ON) send(res, 'docker', dockerState);
     clients.add(res);
@@ -156,6 +174,8 @@ const server = http.createServer((req, res) => {
         const raw = truncated ? salvage(text) : JSON.parse(text);
         ev = raw && raw.v === 1 ? sanitize(raw) : normalize(raw);
       } catch { /* ignora */ }
+      // no modo transcript os eventos já vêm dos arquivos: ignora hooks para não duplicar
+      if (ev && TRANSCRIPTS && url.searchParams.get('src') === 'nirva-stage') { if (!droppedHookEvents++) console.log('[transcripts] eventos de hook ignorados (o modo transcript já cobre esta máquina)'); ev = null; }
       if (ev) broadcast(ev);
       // Sempre 200 e corpo vazio: para hooks HTTP, outros códigos podem
       // significar "bloquear" e o palco nunca deve atrapalhar o Claude Code.
@@ -167,7 +187,7 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, clients: clients.size, events: history.length, docker: dockerState.available }));
+    return res.end(JSON.stringify({ ok: true, clients: clients.size, events: history.length, docker: dockerState.available, mode: TRANSCRIPTS ? 'transcripts' : 'hooks' }));
   }
 
   res.writeHead(404);
@@ -185,8 +205,15 @@ server.listen(PORT, HOST, () => {
   console.log(`\n  🎸 Nirva Stage no ar: ${link}  (escutando em ${HOST})`);
   console.log('     Demo sem Claude Code: ' + link + '/?demo');
   console.log('     Containers Docker: ' + (DOCKER_ON ? (fs.existsSync(DOCKER_SOCK) ? 'via socket' : 'via comando docker') + ' (NIRVA_DOCKER=0 desliga)' : 'desligado'));
+  console.log('     Eventos: ' + (TRANSCRIPTS ? `transcripts em ${TRANSCRIPTS_DIR} (hooks ignorados)` : 'hooks do Claude Code'));
   console.log('     Ctrl+C para desligar\n');
   if (DOCKER_ON) pollDocker();
+  if (TRANSCRIPTS) transcripts.start({
+    dir: TRANSCRIPTS_DIR,
+    emit: (raw) => { const ev = normalize(raw); if (ev) broadcast(ev); },
+    log: (m) => console.log(m),
+    debug: process.env.NIRVA_DEBUG === '1',
+  });
   if (process.argv.includes('--open')) {
     const cmd = process.platform === 'win32' ? `start "" "${link}"` : process.platform === 'darwin' ? `open "${link}"` : `xdg-open "${link}"`;
     exec(cmd, () => {});

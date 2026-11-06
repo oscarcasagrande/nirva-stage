@@ -1,6 +1,6 @@
 {
   "name": "nirva-stage",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Seus agentes do Claude Code como uma banda de rock em pixel art.",
   "scripts": {
@@ -8,8 +8,12 @@
     "serve": "node server.js",
     "install-hooks": "node install-hooks.js",
     "uninstall-hooks": "node install-hooks.js --uninstall",
-    "test-event": "node scripts/send-test.js"
+    "test-event": "node scripts/send-test.js",
+    "doctor": "node scripts/doctor.js",
+    "start:transcripts": "node server.js --open --transcripts"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "MIT"
 }

@@ -547,8 +547,11 @@ function drawAmps(t) {
 }
 function onDocker(list, available, replay) {
   const prev = new Map(docker.list.map((c) => [c.name, c]));
+  const wasAvailable = docker.available;
   docker = { available, list: list || [] };
-  if (!replay && prev.size + docker.list.length) {
+  // Docker indisponível não significa que os containers caíram: avisa uma vez e não compara
+  if (!available) { if (wasAvailable && !replay) pushDockerLog({ name: 'Docker', project: 'docker' }, 'indisponível'); layoutAmps(); return; }
+  if (!replay && wasAvailable !== false && prev.size + docker.list.length) {
     const cur = new Map(docker.list.map((c) => [c.name, c]));
     for (const [n, c] of cur) {
       const p = prev.get(n);
@@ -1240,7 +1243,9 @@ function connect() {
   let opened = false, es;
   try { es = new EventSource('/events'); } catch { startDemo('servidor não encontrado'); return; }
   const fallback = setTimeout(() => { if (!opened) { es.close(); startDemo('servidor não encontrado'); } }, 3500);
-  es.onopen = () => { opened = true; clearTimeout(fallback); setConn('live', 'ao vivo'); };
+  let liveLabel = 'ao vivo';
+  es.onopen = () => { opened = true; clearTimeout(fallback); setConn('live', liveLabel); };
+  es.addEventListener('mode', (e) => { try { liveLabel = JSON.parse(e.data).transcripts ? 'ao vivo · transcript' : 'ao vivo'; setConn('live', liveLabel); } catch { } });
   es.addEventListener('replay', (e) => {
     let list = []; try { list = JSON.parse(e.data); } catch { }
     if (!demoOn) resetAll();
