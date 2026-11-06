@@ -2,9 +2,7 @@
 
 **Seus agentes do Claude Code como uma banda de rock em pixel art, ao vivo no navegador.**
 
-<video src="docs/demo.mp4" controls width="100%">
-  <img src="docs/demo.gif" alt="Nirva Stage ao vivo" />
-</video>
+[![Nirva Stage ao vivo](docs/demo.gif)](docs/demo.mp4)
 
 O Nirva Stage é um **visualizador de agentes**, uma espécie de painel de observabilidade em forma de jogo.
 Ele não controla o Claude Code: só observa, pelos [hooks](https://docs.claude.com/en/docs/claude-code/hooks), o que cada agente está fazendo e mostra isso no palco.
