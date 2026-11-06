@@ -2,7 +2,9 @@
 
 **Seus agentes do Claude Code como uma banda de rock em pixel art, ao vivo no navegador.**
 
-![Nirva Stage](docs/screenshot.png)
+<video src="docs/demo.mp4" controls width="100%">
+  <img src="docs/demo.gif" alt="Nirva Stage ao vivo" />
+</video>
 
 O Nirva Stage é um **visualizador de agentes**, uma espécie de painel de observabilidade em forma de jogo.
 Ele não controla o Claude Code: só observa, pelos [hooks](https://docs.claude.com/en/docs/claude-code/hooks), o que cada agente está fazendo e mostra isso no palco.
@@ -21,20 +23,24 @@ Ele não controla o Claude Code: só observa, pelos [hooks](https://docs.claude.
 
 ### Opção A: Docker (não precisa de Node na máquina)
 
-```bash
+**Windows (PowerShell)**
+
+```powershell
 # 1. sobe o palco (porta publicada só em 127.0.0.1)
-docker run -d --name nirva-stage --restart unless-stopped \
-  -p 127.0.0.1:4321:4321 \
-  ghcr.io/oscarcasagrande/nirva-stage:latest
+docker run -d --name nirva-stage --restart unless-stopped -p 127.0.0.1:4321:4321 ghcr.io/oscarcasagrande/nirva-stage:latest
 
 # 2. instala os hooks HTTP no seu Claude Code (faz backup antes)
-#    Windows (PowerShell):
-docker run --rm -v "$env:USERPROFILE\.claude:/claude" ghcr.io/oscarcasagrande/nirva-stage `
-  node install-hooks.js --http --settings /claude/settings.json
-#    macOS / Linux:
-docker run --rm --user "$(id -u):$(id -g)" -v "$HOME/.claude:/claude" ghcr.io/oscarcasagrande/nirva-stage \
-  node install-hooks.js --http --settings /claude/settings.json
+docker run --rm -v "$env:USERPROFILE\.claude:/claude" ghcr.io/oscarcasagrande/nirva-stage node install-hooks.js --http --settings /claude/settings.json
 ```
+
+**macOS / Linux (bash/zsh)**
+
+```bash
+docker run -d --name nirva-stage --restart unless-stopped -p 127.0.0.1:4321:4321 ghcr.io/oscarcasagrande/nirva-stage:latest
+docker run --rm --user "$(id -u):$(id -g)" -v "$HOME/.claude:/claude" ghcr.io/oscarcasagrande/nirva-stage node install-hooks.js --http --settings /claude/settings.json
+```
+
+> Rode só o bloco do seu sistema. O `--settings /claude/...` é um caminho **dentro do container**: não rode o `install-hooks.js` com essa opção fora do Docker.
 
 Abra **http://localhost:4321** e inicie uma sessão **nova** do `claude`.
 
@@ -61,12 +67,43 @@ No modo nativo, os containers aparecem pelo comando `docker ps` (se o Docker est
 > **Comando ou HTTP?** O hook de comando (opção B) é silencioso: com o palco desligado, o Claude Code nem percebe.
 > O hook HTTP (opção A) dispensa Node. Se o palco estiver desligado, o Claude Code pode mostrar um aviso de hook com falha, mas continua normal.
 
+### Opção C: modo transcript (quando a empresa bloqueia hooks)
+
+Algumas organizações liberam só os hooks definidos por elas. Nesses casos, o `/hooks` do Claude Code mostra **"managed hooks only"** e os hooks do Nirva Stage são ignorados.
+No modo transcript, o palco **não usa hooks**: ele lê, só para leitura, o histórico que o Claude Code grava em `~/.claude/projects/`.
+
+```powershell
+# Node (nativo)
+npm run start:transcripts
+
+# Docker (monta ~/.claude/projects como somente leitura)
+docker compose -f docker-compose.yml -f docker-compose.transcripts.yml up -d
+```
+
+Ligado assim, o palco mostra **"ao vivo · transcript"** e ignora os eventos dos hooks, para não contar nada duas vezes.
+
+**Limitações em relação aos hooks:**
+
+- Os eventos chegam com cerca de 1 s de atraso.
+- O pedido de permissão (luz âmbar) não aparece, porque não fica registrado no histórico.
+- Ao ligar, só sobem ao palco as sessões mexidas nos últimos 15 minutos. O palco não reprisa o histórico antigo.
+
+> Os arquivos de histórico têm o conteúdo das suas conversas. O Nirva Stage lê esses arquivos só no servidor local e manda para o palco apenas o resumo de sempre: nome da ferramenta e nome do arquivo.
+> Em máquina corporativa, confirme se isso está de acordo com a política da sua empresa.
+
+### Algo não funciona?
+
+```bash
+npm run doctor              # palco, hooks, bloqueios e um evento de teste
+npm run doctor -- --claude  # também roda o Claude Code de verdade e conta os eventos que chegaram
+```
+
 ### Desinstalar
 
 ```bash
 npm run uninstall-hooks
 # ou, no Docker:
-docker run --rm -v "$env:USERPROFILE\.claude:/claude" ghcr.io/oscarcasagrande/nirva-stage node install-hooks.js --uninstall --settings /claude/settings.json
+docker run --rm -v "$env:USERPROFILE\.claude:/claude" ghcr.io/oscarcasagrande/nirva-stage node install-hooks.js --uninstall --settings /claude/settings.json   # Windows
 ```
 
 Isso remove só as entradas do Nirva Stage e mantém seus outros hooks. Os backups ficam em `~/.claude/settings.json.nirva-backup-*`.
@@ -126,6 +163,8 @@ O LED fica verde rodando, amarelo com healthcheck iniciando, vermelho com `unhea
 | `NIRVA_HOST` | `127.0.0.1` (`0.0.0.0` na imagem Docker) | interface em que o servidor escuta |
 | `NIRVA_DOCKER` | `1` | `0` desliga os amplificadores |
 | `DOCKER_SOCK` | `/var/run/docker.sock` | socket do Docker no modo container |
+| `NIRVA_TRANSCRIPTS` | desligado | `1` liga o modo transcript em `~/.claude/projects`; também aceita outro caminho |
+| `NIRVA_DEBUG` | desligado | `1` mostra no log os tipos de linha lidos dos transcripts |
 
 O visual fica em `public/index.html`:
 
@@ -154,7 +193,7 @@ O botão 💖 no canto do palco também mostra o QR Code do PIX.
 ## 🤝 Contribuindo
 
 Issues e PRs são bem-vindos: novos instrumentos, cenários, temas, suporte a outros agentes (Codex, Cursor…).
-Para testar localmente: `npm run serve` e depois `npm run test-event`.
+Para testar localmente: `npm run serve` e depois `npm run test-event`. Algo não funciona? Rode `npm run doctor` (ou `npm run doctor -- --claude` para um teste real com o Claude Code).
 
 ## 📄 Licença
 

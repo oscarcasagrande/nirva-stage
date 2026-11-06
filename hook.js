@@ -22,7 +22,7 @@ process.stdin.on('end', () => {
   if (!ev) return finish();
   const body = JSON.stringify(ev);
   const req = http.request({
-    host: '127.0.0.1', port: PORT, path: '/event', method: 'POST', timeout: 400,
+    host: '127.0.0.1', port: PORT, path: '/event?src=nirva-stage', method: 'POST', timeout: 400,
     headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) }
   }, (res) => { res.resume(); res.on('end', finish); });
   req.on('timeout', () => { req.destroy(); finish(); });

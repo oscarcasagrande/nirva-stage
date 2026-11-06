@@ -1,0 +1,12 @@
+# Modo transcript no Docker: para máquinas onde a organização bloqueia hooks
+# de usuário ("managed hooks only"). O palco lê, só para leitura, o histórico
+# que o Claude Code grava em ~/.claude/projects.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.transcripts.yml up -d
+#
+services:
+  nirva-stage:
+    environment:
+      - NIRVA_TRANSCRIPTS=/transcripts
+    volumes:
+      - ${USERPROFILE:-${HOME}}/.claude/projects:/transcripts:ro
