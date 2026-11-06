@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nirva Stage</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎸</text></svg>">
+<style>
+  :root{--bg:#07050d;--panel:rgba(14,10,26,.84);--line:rgba(255,255,255,.09);--txt:#ece7ff;--dim:#9a90c0;--pink:#ff4fa3;--cyan:#3ef2ff;--amber:#ffb000;--green:#5dff9a}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:13px/1.35 "Cascadia Mono",Consolas,ui-monospace,monospace;overflow:hidden;user-select:none}
+  #stage{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px)}
+  #brand{position:fixed;top:12px;left:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;z-index:3}
+  #brand b{letter-spacing:.14em;background:linear-gradient(90deg,var(--pink),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #conn{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:12px}
+  #conn i{width:8px;height:8px;border-radius:50%;background:#666;display:inline-block}
+  #conn.live i{background:var(--green);box-shadow:0 0 8px var(--green)}
+  #conn.demo i{background:var(--pink);box-shadow:0 0 8px var(--pink)}
+  #conn.off i{background:#ff5050}
+  #chips{position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3;max-width:58vw;flex-wrap:wrap;justify-content:center}
+  .chip{padding:6px 10px;display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12px;transition:transform .1s}
+  .chip:hover{transform:translateY(-1px)}
+  .chip.hl{box-shadow:0 0 0 1px currentColor}
+  .chip .sw{width:10px;height:10px;border-radius:3px}
+  .chip .dot{width:7px;height:7px;border-radius:50%}
+  .chip .dot.working{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .chip .dot.waiting{background:var(--amber);animation:blink 1s steps(2) infinite}
+  .chip .dot.yourturn{background:var(--cyan)}
+  .chip .dot.sleep{background:#666}
+  .chip small{color:var(--dim)}
+  .chip.docker{cursor:default}
+  @keyframes blink{50%{opacity:.2}}
+  #ctrl{position:fixed;top:12px;right:12px;display:flex;gap:6px;padding:6px;z-index:3}
+  #ctrl button{all:unset;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;border-radius:7px;font-size:15px}
+  #ctrl button:hover{background:rgba(255,255,255,.08)}
+  #ctrl button.on{background:rgba(255,79,163,.18)}
+  #log{position:fixed;right:12px;bottom:12px;width:min(430px,44vw);padding:10px 12px;z-index:3;font-size:12px}
+  #log h4{margin:0 0 6px;font-size:11px;letter-spacing:.12em;color:var(--dim);font-weight:600}
+  #log .row{display:flex;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 0}
+  #log .t{color:var(--dim)} #log .who{max-width:130px;overflow:hidden;text-overflow:ellipsis}
+  #log .what{overflow:hidden;text-overflow:ellipsis}
+  #log.hide,#help.hide{display:none}
+  #empty{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);padding:14px 20px;text-align:center;z-index:2}
+  #empty.hide{display:none}
+  #empty b{color:var(--pink)} #empty span{color:var(--dim);font-size:12px}
+  #demoBanner{position:fixed;left:12px;bottom:12px;padding:8px 12px;z-index:3;font-size:12px;display:flex;gap:10px;align-items:center}
+  #demoBanner.hide{display:none}
+  #demoBanner b{color:var(--pink)}
+  #demoBanner button{all:unset;cursor:pointer;color:var(--cyan);text-decoration:underline}
+  #tip{position:fixed;z-index:6;padding:8px 10px;font-size:12px;pointer-events:none;white-space:nowrap}
+  #tip.hide{display:none}
+  #tip b{display:block;margin-bottom:2px} #tip span{color:var(--dim)}
+  #help{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 20px;z-index:5;width:min(600px,92vw);font-size:12.5px;max-height:90vh;overflow:auto}
+  #help h3{margin:0 0 10px;font-size:14px}
+  #help table{border-collapse:collapse;width:100%}
+  #help td{padding:3px 6px;vertical-align:top} #help td:first-child{white-space:nowrap}
+  #help .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  #help kbd{background:rgba(255,255,255,.1);border-radius:4px;padding:0 5px}
+  #ctrl button.hide{display:none}
+  #ctrl button.donate{background:linear-gradient(135deg,rgba(255,79,163,.25),rgba(62,242,255,.2))}
+  #donate{position:fixed;inset:0;z-index:7;display:grid;place-items:center;background:rgba(4,2,10,.6)}
+  #donate.hide{display:none}
+  #donate .box{padding:20px 22px;width:min(420px,92vw);text-align:center;position:relative}
+  #donate h3{margin:0 0 4px;font-size:16px} #donate p{margin:0 0 14px;color:var(--dim);font-size:12.5px}
+  #donate .qr{background:#fff;border-radius:10px;padding:10px;display:inline-block;line-height:0;margin-bottom:10px}
+  #donate .qr svg{width:200px;height:200px}
+  #donate textarea{width:100%;height:62px;resize:none;background:rgba(255,255,255,.06);color:var(--txt);border:1px solid var(--line);border-radius:8px;font:11px/1.3 inherit;padding:6px;user-select:all}
+  #donate .row{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  #donate .btn{all:unset;cursor:pointer;padding:8px 14px;border-radius:8px;font-weight:600;font-size:12.5px;background:rgba(255,255,255,.08)}
+  #donate .btn:hover{background:rgba(255,255,255,.14)}
+  #donate .btn.pix{background:#32bcad;color:#05211e} #donate .btn.paypal{background:#ffc439;color:#1a1300}
+  #donate .x{position:absolute;top:8px;right:12px;cursor:pointer;color:var(--dim);font-size:18px}
+  #donate small{display:block;margin-top:10px;color:var(--dim)}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div id="brand" class="panel"><b>NIRVA STAGE</b><span id="conn"><i></i><span>conectando…</span></span></div>
+<div id="chips"></div>
+<div id="ctrl" class="panel">
+  <button id="bSound" title="Som (S)">🔇</button>
+  <button id="bNotify" title="Notificações do navegador quando o Claude espera você (N)">🔕</button>
+  <button id="bLog" title="Registro de eventos (L)" class="on">📜</button>
+  <button id="bDemo" title="Liga/desliga a demo (D)">🎲</button>
+  <button id="bHelp" title="Legenda (H)">❔</button>
+  <button id="bFull" title="Tela cheia (F)">⛶</button>
+  <button id="bDonate" class="donate hide" title="Apoie o projeto (PIX / PayPal)">💖</button>
+</div>
+<div id="donate" class="hide">
+  <div class="box panel">
+    <span class="x" id="donateClose">×</span>
+    <h3>Curtiu o Nirva Stage? 🤘</h3>
+    <p>Pague uma cerveja para a banda. Qualquer valor ajuda a manter o projeto vivo.</p>
+    <div id="pixArea">
+      <div class="qr" id="pixQr"></div>
+      <textarea id="pixCode" readonly title="PIX copia e cola"></textarea>
+    </div>
+    <div class="row">
+      <button class="btn pix" id="pixCopy">Copiar PIX</button>
+      <a class="btn paypal" id="paypalLink" target="_blank" rel="noopener">PayPal</a>
+      <a class="btn" id="ghLink" target="_blank" rel="noopener">⭐ GitHub</a>
+    </div>
+    <small id="donateNote"></small>
+  </div>
+</div>
+<div id="log" class="panel"><h4>SETLIST AO VIVO</h4><div id="logRows"></div></div>
+<div id="empty" class="panel"><b>Palco vazio</b><br><span>Abra o Claude Code num terminal: a banda sobe ao palco no primeiro evento. 🎸</span></div>
+<div id="demoBanner" class="panel hide"><b>MODO DEMO</b><span id="demoWhy">eventos simulados</span><button id="demoStop">parar</button></div>
+<div id="tip" class="panel hide"></div>
+<div id="help" class="panel hide">
+  <h3>Legenda do palco</h3>
+  <table>
+    <tr><td>🎤 Vocalistas</td><td>o agente principal de cada sessão, um microfone por projeto. A cor do projeto aparece na marca no chão e na borda do nome.</td></tr>
+    <tr><td>🎻 Orquestra</td><td>cada subagente pega um instrumento livre: guitarra, baixo, bateria, teclado, synth, sax, sanfona, violino, flauta, violoncelo, harpa, trompete, trombone, clarinete, tuba, percussão. Sem lugar, espera na coxia.</td></tr>
+    <tr><td>🔊 Amplificadores</td><td>containers Docker de pé, na cor do projeto (nome do projeto do Compose = pasta). LED verde rodando, amarelo iniciando, vermelho com problema, azul pausado. Passe o mouse para ver os detalhes.</td></tr>
+    <tr><td><span class="sw" style="background:#6ec6ff"></span>lendo</td><td>Read, Grep, Glob: toca leve, olhando a partitura</td></tr>
+    <tr><td><span class="sw" style="background:#ff5fa2"></span>escrevendo</td><td>Edit, Write: solo com notas voando</td></tr>
+    <tr><td><span class="sw" style="background:#ffb547"></span>terminal</td><td>Bash: headbang</td></tr>
+    <tr><td><span class="sw" style="background:#7dff9a"></span>web</td><td>WebSearch, WebFetch</td></tr>
+    <tr><td><span class="sw" style="background:#b48cff"></span>mcp</td><td>ferramentas de MCP: faíscas no chão</td></tr>
+    <tr><td><span class="sw" style="background:#ffb000"></span>esperando</td><td>pedido de permissão: mão levantada e luz âmbar piscando</td></tr>
+    <tr><td><span class="sw" style="background:#3ef2ff"></span>sua vez</td><td>fim do turno: reverência, confete e a plateia pulando</td></tr>
+    <tr><td>💤</td><td>5 min sem eventos: o músico cochila</td></tr>
+  </table>
+  <p style="color:var(--dim);margin:10px 0 0">Atalhos: <kbd>S</kbd> som · <kbd>N</kbd> notificações · <kbd>L</kbd> registro · <kbd>D</kbd> demo · <kbd>F</kbd> tela cheia · <kbd>H</kbd> legenda · clique num projeto no topo para destacá-lo</p>
+</div>
+
+<script src="vendor/qrcode.js"></script>
+<script>
+(() => {
+'use strict';
+
+// ======================================================================
+//  Doações: troque pelos seus dados (forks: coloquem os de vocês).
+//  Use chave PIX aleatória ou e-mail, nunca CPF/telefone, porque isto é público.
+// ======================================================================
+const DONATE = {
+  pix: { key: 'oscar.casagrande@gmail.com', name: 'Oscar Casagrande', city: 'Sao Paulo' },   // nome até 25 caracteres, cidade até 15
+  paypal: 'https://www.paypal.com/donate/?business=UT8UUZPYC426W&no_recurring=0&currency_code=BRL',                              // ex.: https://www.paypal.com/donate/?business=seu@email.com&currency_code=BRL  ou  https://paypal.me/usuario
+  github: 'https://github.com/oscarcasagrande/nirva-stage',
+};
+
+// ======================================================================
+//  Configuração
+// ======================================================================
+const W = 640, H = 360;                 // resolução "pixel" do palco
+const SLEEP_MS = 5 * 60 * 1000;         // sem eventos por 5 min -> cochilo
+const SUB_STALE_MS = 15 * 60 * 1000;    // subagente esquecido sai do palco
+const SESSION_STALE_MS = 90 * 60 * 1000;
+
+// pés (x, y) de cada posição. Mude à vontade.
+const STATIONS = [
+  { id: 'micA', kind: 'mic', x: 320, y: 304 }, { id: 'micB', kind: 'mic', x: 258, y: 304 }, { id: 'micC', kind: 'mic', x: 382, y: 304 },
+  { id: 'guitar', kind: 'guitar', x: 198, y: 296 }, { id: 'bass', kind: 'bass', x: 442, y: 296 },
+  { id: 'drums', kind: 'drums', x: 320, y: 216 }, { id: 'violin', kind: 'violin', x: 264, y: 220 }, { id: 'flute', kind: 'flute', x: 374, y: 220 },
+  { id: 'keys', kind: 'keys', x: 72, y: 264 }, { id: 'accordion', kind: 'accordion', x: 142, y: 262 },
+  { id: 'sax', kind: 'sax', x: 500, y: 262 }, { id: 'synth', kind: 'synth', x: 568, y: 264 },
+  { id: 'perc', kind: 'perc', x: 98, y: 314 },
+  { id: 'harp', kind: 'harp', x: 72, y: 230 }, { id: 'cello', kind: 'cello', x: 124, y: 230 }, { id: 'tuba', kind: 'tuba', x: 176, y: 230 },
+  { id: 'trombone', kind: 'trombone', x: 462, y: 230 }, { id: 'clarinet', kind: 'clarinet', x: 514, y: 230 }, { id: 'trumpet', kind: 'trumpet', x: 552, y: 230 },
+];
+const MICS = ['micA', 'micB', 'micC'];
+const BAND_ORDER = ['guitar', 'bass', 'drums', 'keys', 'sax', 'synth', 'accordion', 'violin', 'trumpet', 'flute', 'cello', 'perc', 'trombone', 'clarinet', 'tuba', 'harp'];
+const PREFER = [
+  [/explore|search|research|scout/i, ['guitar', 'violin', 'flute']],
+  [/plan|architect/i, ['keys', 'harp', 'cello']],
+  [/review|qa|test|audit/i, ['bass', 'cello', 'trombone']],
+  [/dev|general|code|build|implement/i, ['drums', 'sax', 'guitar']],
+  [/ux|design|ui/i, ['synth', 'flute', 'harp']],
+  [/doc|writer/i, ['accordion', 'clarinet']],
+  [/\bpm\b|analyst|product|scrum/i, ['trumpet', 'tuba']],
+];
+const SESSION_COLORS = ['#ff4fa3', '#3ef2ff', '#ffe66d', '#7dff9a', '#b48cff', '#ff8a3d', '#6ea8ff', '#ff6b6b'];
+
+const ACT = {
+  idle:     { e: 0,    c: '#c9c3e6', verb: '' },
+  read:     { e: .45,  c: '#6ec6ff', verb: 'lendo' },
+  write:    { e: 1,    c: '#ff5fa2', verb: 'escrevendo' },
+  bash:     { e: 1,    c: '#ffb547', verb: 'terminal' },
+  web:      { e: .3,   c: '#7dff9a', verb: 'web' },
+  mcp:      { e: .8,   c: '#b48cff', verb: 'mcp' },
+  task:     { e: .5,   c: '#ffffff', verb: 'chamando a banda' },
+  plan:     { e: .5,   c: '#ffe66d', verb: 'setlist' },
+  other:    { e: .6,   c: '#9ad7ff', verb: 'tocando' },
+  sing:     { e: 1,    c: '#ff4fa3', verb: 'novo pedido' },
+  wait:     { e: 0,    c: '#ffb000', verb: 'esperando você' },
+  error:    { e: 0,    c: '#ff3b3b', verb: 'erro' },
+  done:     { e: 0,    c: '#3ef2ff', verb: 'pronto!' },
+  yourturn: { e: 0,    c: '#3ef2ff', verb: 'sua vez' },
+  sleep:    { e: 0,    c: '#6b6488', verb: 'zzz' },
+};
+
+function toolKind(t) {
+  if (!t) return 'other';
+  if (/^(Read|Grep|Glob|LS|NotebookRead)$/.test(t)) return 'read';
+  if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(t)) return 'write';
+  if (/^(Bash|BashOutput|KillShell|KillBash|PowerShell)$/.test(t)) return 'bash';
+  if (/^(WebSearch|WebFetch)$/.test(t)) return 'web';
+  if (/^(Task|Agent)$/.test(t)) return 'task';
+  if (/^mcp__/.test(t)) return 'mcp';
+  if (/^(TodoWrite|TaskCreate|TaskUpdate|ExitPlanMode)$/.test(t)) return 'plan';
+  return 'other';
+}
+
+// ======================================================================
+//  Canvas e utilitários de pixel
+// ======================================================================
+const cv = document.getElementById('stage');
+const ctx = cv.getContext('2d');
+const low = document.createElement('canvas'); low.width = W; low.height = H;
+const g = low.getContext('2d');
+const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+const bgc = bg.getContext('2d');
+let G = g;
+let view = { s: 1, ox: 0, oy: 0, dpr: 1 };
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+  let s = Math.min(cv.width / W, cv.height / H);
+  if (s >= 2) s = Math.floor(s * 2) / 2;
+  view = { s, ox: Math.round((cv.width - W * s) / 2), oy: Math.round((cv.height - H * s) / 2), dpr };
+}
+addEventListener('resize', resize); resize();
+
+const R = (x, y, w, h, c) => { G.fillStyle = c; G.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+const P = (x, y, c) => R(x, y, 1, 1, c);
+function circ(cx, cy, r, c) {
+  G.fillStyle = c; cx = Math.round(cx); cy = Math.round(cy);
+  for (let dy = -r; dy <= r; dy++) { const w = Math.floor(Math.sqrt(r * r - dy * dy + r * .8)); G.fillRect(cx - w, cy + dy, 2 * w + 1, 1); }
+}
+function ellipse(cx, cy, rx, ry, c) {
+  G.fillStyle = c; cx = Math.round(cx); cy = Math.round(cy);
+  for (let dy = -ry; dy <= ry; dy++) { const w = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry + .6)))); G.fillRect(cx - w, cy + dy, 2 * w + 1, 1); }
+}
+function line(x0, y0, x1, y1, c, t = 1) {
+  G.fillStyle = c; x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+  const dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1, dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  let e = dx + dy; const o = (t / 2) | 0;
+  for (let i = 0; i < 2000; i++) {
+    G.fillRect(x0 - o, y0 - o, t, t);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; }
+  }
+}
+function hex2rgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map((c) => c + c).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function shade(h, f) { const [r, gg, b] = hex2rgb(h); const k = (v) => Math.max(0, Math.min(255, Math.round(v * f))); return `rgb(${k(r)},${k(gg)},${k(b)})`; }
+function hash(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let a = seed || 1; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const now = () => Date.now();
+const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const FONT = {
+  N: ['10001','11001','10101','10011','10001','10001','10001'], I: ['11111','00100','00100','00100','00100','00100','11111'],
+  R: ['11110','10001','10001','11110','10100','10010','10001'], V: ['10001','10001','10001','10001','10001','01010','00100'],
+  A: ['01110','10001','10001','11111','10001','10001','10001'], O: ['01110','10001','10001','10001','10001','10001','01110'],
+  C: ['01111','10000','10000','10000','10000','10000','01111'], K: ['10001','10010','10100','11000','10100','10010','10001'],
+  ' ': ['00000','00000','00000','00000','00000','00000','00000'],
+};
+const ICON = {
+  read:  ['1111110','1000010','1011010','1000010','1011010','1000010','1111110'],
+  write: ['0000011','0000111','0001110','0011100','0111000','1110000','1100000'],
+  bash:  ['0000000','1000000','0100000','0010000','0100000','1001111','0000000'],
+  web:   ['0011100','0101010','1111111','1010101','1111111','0101010','0011100'],
+  mcp:   ['0100100','0100100','1111110','1111110','0111100','0011000','0011000'],
+  task:  ['0001000','0001000','0001000','1111111','0001000','0001000','0001000'],
+  plan:  ['1011111','0000000','1011111','0000000','1011111','0000000','1011110'],
+  other: ['0001100','0001110','0001011','0001000','0111000','1111000','0110000'],
+  sing:  ['0001100','0001110','0001011','0001000','0111000','1111000','0110000'],
+  wait:  ['0011100','0011100','0011100','0011100','0001000','0000000','0011100'],
+  error: ['1000001','0100010','0010100','0001000','0010100','0100010','1000001'],
+  done:  ['0001000','0011100','1111111','0111110','0011100','0110110','0100010'],
+  yourturn: ['0111110','1100011','0000011','0001110','0001000','0000000','0001000'],
+};
+const NOTE = ['00110','00101','00100','00100','11100','11100'];
+function bitmap(rows, x, y, c, s = 1) { G.fillStyle = c; for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) if (rows[j][i] === '1') G.fillRect(Math.round(x + i * s), Math.round(y + j * s), s, s); }
+
+// ======================================================================
+//  Cenário (desenhado uma vez)
+// ======================================================================
+function drawAmp(x0, fy) {
+  R(x0, fy - 58, 42, 12, '#17131d'); R(x0 + 2, fy - 56, 38, 3, '#b8932a'); R(x0 + 2, fy - 52, 38, 4, '#2a2430');
+  for (let i = 0; i < 7; i++) P(x0 + 5 + i * 5, fy - 51, '#e8e0c8');
+  for (let k = 0; k < 2; k++) {
+    const y = fy - 46 + k * 23;
+    R(x0, y, 42, 22, '#141018'); R(x0 + 2, y + 2, 38, 18, '#2a2430');
+    for (let yy = 0; yy < 16; yy++) for (let xx = 0; xx < 36; xx++) if ((xx + yy) % 2) P(x0 + 3 + xx, y + 3 + yy, '#211c28');
+    R(x0, y, 42, 1, '#4a4452');
+  }
+}
+function curve(pts, c) {
+  const [a, b, d] = pts; let px = a[0], py = a[1];
+  for (let t = .04; t <= 1.001; t += .04) {
+    const x = (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * b[0] + t * t * d[0];
+    const y = (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * b[1] + t * t * d[1];
+    line(px, py, x, y, c); px = x; py = y;
+  }
+}
+function drawBG() {
+  G = bgc;
+  R(0, 0, W, H, '#120d20');
+  for (let j = 0; j < 15; j++) for (let i = 0; i < 44; i++) {
+    const x = 56 + i * 12, y = 16 + j * 12, odd = (i + j) % 2;
+    R(x, y, 12, 12, odd ? '#221a38' : '#1d1631');
+    const hi = odd ? '#2b2247' : '#251c3e';
+    for (let k = 1; k < 12; k += 3) odd ? R(x + 1, y + k, 10, 1, hi) : R(x + k, y + 1, 1, 10, hi);
+    R(x, y, 12, 1, '#140f22'); R(x, y, 1, 12, '#140f22');
+  }
+  for (const [x0, x1] of [[0, 56], [584, 640]]) {
+    R(x0, 0, x1 - x0, 196, '#161026');
+    for (let y = 0; y < 196; y += 8) for (let x = x0 + ((y / 8) % 2 ? 0 : 6); x < x1; x += 12) R(x, y, 1, 8, '#120c1f');
+    for (let y = 0; y < 196; y += 8) R(x0, y, x1 - x0, 1, '#120c1f');
+  }
+  R(8, 40, 40, 54, '#2d1b4e'); R(9, 41, 38, 52, '#3a2563');
+  line(30, 46, 20, 64, '#ffe66d', 2); line(20, 64, 30, 64, '#ffe66d', 2); line(30, 64, 22, 84, '#ffe66d', 2);
+  R(12, 88, 32, 2, '#ff4fa3');
+  R(592, 40, 40, 54, '#13324a'); R(593, 41, 38, 52, '#184160');
+  circ(612, 64, 13, '#0d0d12'); circ(612, 64, 5, '#ff4fa3'); P(612, 64, '#0d0d12');
+  R(596, 84, 30, 2, '#3ef2ff'); R(596, 88, 20, 2, '#3ef2ff');
+  // prateleiras dos amplificadores (containers)
+  for (const [x0, x1] of [[58, 228], [412, 582]]) for (const y of [146, 170, 194]) { R(x0, y, x1 - x0, 2, '#2a2233'); R(x0, y + 2, x1 - x0, 1, '#120c1f'); }
+  R(0, 196, W, 4, '#0c0816');
+  for (let r = 0; r < 21; r++) {
+    const y = 200 + r * 6; R(0, y, W, 6, r % 2 ? '#3a2a24' : '#35261f'); R(0, y, W, 1, '#2a1d18');
+    for (let x = (r * 17) % 40; x < W; x += 40) R(x, y, 1, 6, '#2a1d18');
+  }
+  R(228, 198, 184, 24, '#2b2233'); for (let k = 0; k < 4; k++) R(228, 198 + k * 6, 184, 1, '#241c2b');
+  R(228, 222, 184, 8, '#1b1422'); R(228, 222, 184, 1, '#3a2f44');
+  R(0, 322, W, 6, '#1b1318'); R(0, 322, W, 1, '#5a4038'); R(0, 328, W, 32, '#0a0712');
+  drawAmp(12, 230); drawAmp(586, 230);
+  R(0, 4, W, 2, '#3a3848'); R(0, 12, W, 2, '#3a3848');
+  for (let x = 0; x < W; x += 8) { line(x, 6, x + 4, 11, '#2c2a38'); line(x + 4, 11, x + 8, 6, '#2c2a38'); }
+  const cans = [...new Set(STATIONS.map((s) => s.x))];
+  for (const cx of cans) { R(cx - 1, 13, 2, 2, '#555'); R(cx - 3, 15, 6, 6, '#1a1822'); R(cx - 2, 20, 4, 1, '#55536a'); }
+  curve([[34, 232], [120, 312], [198, 300]], '#151019');
+  curve([[606, 232], [520, 316], [442, 300]], '#151019');
+  curve([[40, 232], [60, 260], [72, 266]], '#151019');
+  curve([[600, 232], [585, 260], [568, 266]], '#151019');
+  curve([[330, 306], [400, 334], [600, 236]], '#151019');
+  for (const mx of [262, 380]) { R(mx - 11, 314, 22, 7, '#15121c'); R(mx - 9, 315, 18, 3, '#2a2633'); R(mx - 11, 314, 22, 1, '#3c3646'); }
+  R(336, 309, 9, 11, '#efe9dc'); for (let k = 0; k < 4; k++) R(338, 311 + k * 2, 5, 1, '#9a8f80');
+  G = g;
+}
+
+const sign = document.createElement('canvas'); sign.width = 170; sign.height = 34;
+(function drawSign() {
+  const sc = sign.getContext('2d'); let x = 8;
+  sc.fillStyle = '#0c0816'; sc.fillRect(0, 0, 170, 34); sc.fillStyle = '#1b1430'; sc.fillRect(1, 1, 168, 32);
+  for (const ch of 'NIRVA ROCK') {
+    const col = x < 76 ? '#ff4fa3' : '#3ef2ff';
+    sc.shadowColor = col; sc.shadowBlur = 6; sc.fillStyle = col;
+    FONT[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') sc.fillRect(x + i * 2, 10 + j * 2, 2, 2); }));
+    x += ch === ' ' ? 8 : 12 + (ch === 'I' ? 0 : 3);
+  }
+})();
+
+const crowd = [];
+(() => { const r = rng(7); for (let i = 0; i < 33; i++) crowd.push({ x: 4 + i * 19.5 + r() * 6, top: 334 + r() * 9, rad: 5 + Math.floor(r() * 2), c: ['#0e0b18', '#120e1f', '#0b0914', '#151127'][i % 4], ph: r() * 6.28, phone: r() < .16 }); })();
+
+// ======================================================================
+//  Estado (um palco só para todas as sessões)
+// ======================================================================
+const sessions = new Map();   // sid -> sessão
+const members = new Map();    // "sid|agente" -> músico
+const occ = {};               // posição -> chave do músico
+let coxia = [];
+let highlight = null;
+let cheerUntil = 0;
+let particles = [];
+const logRows = [];
+let energy = 0;
+let sessionSeq = 0;
+let docker = { available: null, list: [] };
+
+const SKINS = ['#f2c7a5', '#e6b38f', '#c68c5d', '#9a6440', '#6b4129'];
+const HAIRC = ['#1b1b1f', '#4a2c1a', '#a0522d', '#e8c15a', '#d94f8c', '#4fb3ff', '#9b5de5', '#eeeeee', '#2f2f3a'];
+const STYLES = ['long', 'mohawk', 'short', 'cap', 'afro', 'bun', 'spiky', 'long'];
+const SHIRTS = ['#e63946', '#2a9d8f', '#3a86ff', '#f4a261', '#8338ec', '#ffbe0b', '#06d6a0', '#ef476f', '#118ab2'];
+const PANTS = ['#1f2a44', '#2b2b33', '#3b3b55', '#4a3528', '#23303a'];
+const GUITARS = ['#e63946', '#d4572a', '#f1f1f1', '#2a9d8f', '#ffbe0b', '#8338ec'];
+
+function makeLook(seed, leader) {
+  const r = rng(hash(seed));
+  const pick = (a) => a[Math.floor(r() * a.length)];
+  if (leader) return { skin: pick(SKINS), hair: pick(['long', 'spiky', 'mohawk', 'short']), hairC: pick(HAIRC), shirt: '#d97757', jacket: '#17151c', pants: '#1f1f28', shades: r() < .3, inst: pick(GUITARS) };
+  return { skin: pick(SKINS), hair: pick(STYLES), hairC: pick(HAIRC), shirt: pick(SHIRTS), jacket: r() < .35 ? pick(['#17151c', '#3b2a1f', '#1d2a44']) : null, pants: pick(PANTS), shades: r() < .2, inst: pick(GUITARS) };
+}
+
+function getSession(ev) {
+  let s = sessions.get(ev.session);
+  if (!s) {
+    const used = new Set([...sessions.values()].map((x) => x.color));
+    const color = SESSION_COLORS.find((c) => !used.has(c)) || SESSION_COLORS[sessionSeq % SESSION_COLORS.length];
+    s = { id: ev.session, order: sessionSeq++, project: ev.project || '', color, lastAt: ev.ts, status: 'working', ended: false, endedAt: 0 };
+    sessions.set(ev.session, s);
+  }
+  if (!s.project && ev.project) s.project = ev.project;
+  return s;
+}
+const stationOf = (id) => STATIONS.find((s) => s.id === id);
+const keyOf = (sid, id) => sid + '|' + id;
+const membersOf = (sid) => [...members.values()].filter((m) => m.sid === sid);
+
+function newMember(s, id, role, type, ts) {
+  const same = membersOf(s.id).filter((x) => x.type === type && type).length;
+  return {
+    key: keyOf(s.id, id), id, role, type, sid: s.id, look: makeLook(s.id + id, role === 'leader'),
+    label: role === 'leader' ? '' : (type || 'agente') + (same ? ' #' + (same + 1) : ''),
+    station: null, x: 0, y: 0, tx: 0, state: 'present', walk: 0,
+    act: 'idle', detail: '', actAt: ts, until: Infinity, next: 'idle', lastAt: ts,
+    phase: (hash(id + s.id) % 628) / 100, emit: 0, scr: null, leaveAt: 0,
+  };
+}
+function placeEntering(m, replay) {
+  const st = stationOf(m.station);
+  m.y = st.y; m.tx = st.x;
+  if (replay) { m.x = st.x; m.state = 'present'; }
+  else { m.x = st.x < 320 ? -24 : W + 24; m.state = 'entering'; }
+}
+function pickStation(m) {
+  if (m.role === 'leader') { const mic = MICS.find((id) => !occ[id]); if (mic) return mic; }
+  for (const [re, list] of PREFER) if (re.test(m.type)) { const f = list.find((id) => !occ[id]); if (f) return f; }
+  return BAND_ORDER.find((id) => !occ[id]) || null;
+}
+function seat(m, replay) {
+  const st = pickStation(m);
+  if (st) { m.station = st; occ[st] = m.key; placeEntering(m, replay); if (!replay) puff(stationOf(st).x, stationOf(st).y - 20); }
+  else { m.state = 'coxia'; coxia.push(m.key); }
+}
+function ensureLeader(s, ts, replay) {
+  const k = keyOf(s.id, '__leader');
+  let m = members.get(k);
+  if (!m) { m = newMember(s, '__leader', 'leader', '', ts); members.set(k, m); seat(m, replay); }
+  return m;
+}
+function addSub(s, id, type, ts, replay) {
+  const k = keyOf(s.id, id);
+  if (members.has(k)) return members.get(k);
+  const m = newMember(s, id, 'sub', type, ts); members.set(k, m); seat(m, replay);
+  return m;
+}
+function removeMember(m, replay) {
+  if (m.state === 'coxia') { coxia = coxia.filter((x) => x !== m.key); members.delete(m.key); return; }
+  if (replay) { freeStation(m); members.delete(m.key); return; }
+  if (m.state === 'leaving') return;
+  m.state = 'leaving'; m.tx = m.x < 320 ? -30 : W + 30;
+}
+function freeStation(m) {
+  if (!m.station || occ[m.station] !== m.key) return;
+  const st = m.station; delete occ[st];
+  const isMic = MICS.includes(st);
+  const idx = coxia.findIndex((k) => { const c = members.get(k); return c && (!isMic || c.role === 'leader'); });
+  if (idx >= 0) { const n = members.get(coxia.splice(idx, 1)[0]); n.station = st; occ[st] = n.key; placeEntering(n, false); }
+}
+function setAct(m, act, detail, holdMs, ts, next = 'idle') {
+  m.act = act; m.detail = detail || ''; m.actAt = ts; m.until = holdMs === Infinity ? Infinity : ts + holdMs; m.next = next; m.lastAt = ts;
+}
+
+// ======================================================================
+//  Eventos do Claude Code
+// ======================================================================
+function handle(ev, replay = false) {
+  if (!ev || !ev.event) return;
+  const ts = replay ? (ev.ts || now()) : now();
+  const s = getSession(ev);
+  if (s.ended && ev.event !== 'SessionStart') return;
+  if (ev.event === 'SessionStart') s.ended = false;
+  s.lastAt = ts;
+  const leader = ensureLeader(s, ts, replay);
+  const who = () => ev.agent ? (members.get(keyOf(s.id, ev.agent)) || addSub(s, ev.agent, ev.agentType, ts, replay)) : leader;
+  let m = leader;
+  switch (ev.event) {
+    case 'SessionStart': s.status = 'working'; setAct(leader, 'sing', 'subiu ao palco', 1500, ts); break;
+    case 'UserPromptSubmit':
+      s.status = 'working';
+      for (const x of membersOf(s.id)) if (x.act === 'wait' || x.act === 'yourturn') setAct(x, 'idle', '', Infinity, ts);
+      setAct(leader, 'sing', '', 1800, ts); break;
+    case 'PreToolUse': m = who(); s.status = 'working'; setAct(m, toolKind(ev.tool), ev.detail || ev.tool, 90000, ts); if (leader.act === 'yourturn') setAct(leader, 'idle', '', Infinity, ts); break;
+    case 'PostToolUse': m = who(); setAct(m, toolKind(ev.tool), ev.detail || ev.tool, 1100, ts); if (s.status === 'waiting') s.status = 'working'; break;
+    case 'PostToolUseFailure': m = who(); setAct(m, 'error', ev.tool, 1600, ts); if (!replay) burst(m, '#ff3b3b', 14); break;
+    case 'PermissionRequest': m = who(); setAct(m, 'wait', ev.detail || ev.tool, Infinity, ts); s.status = 'waiting'; if (!replay) alertUser(s, `pede permissão: ${ev.tool}${ev.detail ? ' · ' + ev.detail : ''}`); break;
+    case 'Notification': {
+      const permission = /permiss/i.test(ev.note) || ev.ntype === 'permission_prompt';
+      const someoneWaits = membersOf(s.id).some((x) => x.act === 'wait');
+      if (permission && !someoneWaits) setAct(leader, 'wait', '', Infinity, ts);
+      if (!permission && leader.act !== 'wait') setAct(leader, 'yourturn', '', Infinity, ts);
+      s.status = permission ? 'waiting' : 'yourturn';
+      if (!replay) alertUser(s, ev.note || 'esperando você');
+      break;
+    }
+    case 'Stop':
+      s.status = 'yourturn'; setAct(leader, 'done', '', 2600, ts, 'yourturn');
+      if (!replay) { cheerUntil = ts + 2800; confetti(); powerChord(); }
+      break;
+    case 'SubagentStart': m = addSub(s, ev.agent || ('sub-' + ts), ev.agentType, ts, replay); setAct(m, 'idle', '', Infinity, ts); setAct(leader, 'task', ev.agentType, 1500, ts); break;
+    case 'SubagentStop': { const x = members.get(keyOf(s.id, ev.agent)); if (x) { m = x; setAct(x, 'done', '', 900, ts); x.leaveAt = ts + 900; } break; }
+    case 'PreCompact': setAct(leader, 'plan', 'compactando', 4000, ts); break;
+    case 'SessionEnd':
+      s.ended = true; s.endedAt = ts;
+      for (const x of membersOf(s.id)) removeMember(x, replay);
+      break;
+  }
+  pushLog(ev, s, m);
+}
+
+// ======================================================================
+//  Docker: containers de pé viram amplificadores na parede
+// ======================================================================
+const AMP_SLOTS = [];
+for (const [x0] of [[60], [414]]) for (const yb of [194, 170, 146]) for (let i = 0; i < 6; i++) AMP_SLOTS.push({ x: x0 + i * 27, y: yb - 20 });
+let ampsCache = [];
+function projectOfContainer(c) {
+  const cands = [c.project, c.workdir ? c.workdir.split(/[\\/]+/).filter(Boolean).pop() : ''].map(norm).filter(Boolean);
+  for (const s of sessions.values()) if (!s.ended && cands.includes(norm(s.project))) return s;
+  return null;
+}
+function layoutAmps() {
+  const list = docker.list.map((c) => ({ c, s: projectOfContainer(c) }));
+  list.sort((a, b) => (a.s ? a.s.order : 999) - (b.s ? b.s.order : 999) || (a.c.project || '').localeCompare(b.c.project || '') || a.c.name.localeCompare(b.c.name));
+  ampsCache = list.slice(0, AMP_SLOTS.length).map((it, i) => ({ ...it, slot: AMP_SLOTS[i], ph: (hash(it.c.name) % 628) / 100 }));
+  ampsCache.overflow = Math.max(0, list.length - AMP_SLOTS.length);
+}
+function ledColor(c, t) {
+  const blink = Math.floor(t * 3) % 2 === 0;
+  if (c.state === 'paused') return '#6ea8ff';
+  if (c.state === 'restarting') return blink ? '#ffb000' : '#3a2a00';
+  if (c.health === 'unhealthy') return blink ? '#ff3b3b' : '#3a0a0a';
+  if (c.health === 'starting') return blink ? '#ffe66d' : '#3a3410';
+  if (c.state !== 'running') return '#ff3b3b';
+  return '#5dff9a';
+}
+function drawAmps(t) {
+  for (const a of ampsCache) {
+    const { x, y } = a.slot, col = a.s ? a.s.color : '#6b6488';
+    const running = a.c.state === 'running';
+    R(x, y, 24, 20, '#141018'); R(x, y, 24, 2, col); R(x + 1, y + 3, 22, 16, '#241f2b');
+    for (let yy = 0; yy < 14; yy++) for (let xx = 0; xx < 20; xx++) if ((xx + yy) % 2) P(x + 2 + xx, y + 4 + yy, '#1c1822');
+    const pump = running && energy > .05 ? Math.round(Math.max(0, Math.sin(t * 8 + a.ph)) * (energy > .5 ? 1 : 0)) : 0;
+    circ(x + 11, y + 11, 5 + pump, '#0f0c14'); circ(x + 11, y + 11, 3, '#2e2838'); circ(x + 11, y + 11, 1, '#4a4258');
+    const led = ledColor(a.c, t + a.ph);
+    R(x + 19, y + 4, 2, 2, led);
+    if (running && a.c.health !== 'unhealthy') { g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(93,255,154,.18)'; g.fillRect(x + 18, y + 3, 4, 4); g.globalCompositeOperation = 'source-over'; }
+    R(x, y + 19, 24, 1, '#0a0810');
+  }
+}
+function onDocker(list, available, replay) {
+  const prev = new Map(docker.list.map((c) => [c.name, c]));
+  docker = { available, list: list || [] };
+  if (!replay && prev.size + docker.list.length) {
+    const cur = new Map(docker.list.map((c) => [c.name, c]));
+    for (const [n, c] of cur) {
+      const p = prev.get(n);
+      if (!p) pushDockerLog(c, 'subiu');
+      else if (p.health !== c.health && c.health === 'unhealthy') pushDockerLog(c, 'ficou unhealthy');
+      else if (p.state !== c.state) pushDockerLog(c, c.state);
+    }
+    for (const [n, c] of prev) if (!cur.has(n)) pushDockerLog(c, 'caiu');
+  }
+  layoutAmps();
+}
+function pushDockerLog(c, what) {
+  const s = projectOfContainer(c);
+  logRows.push({ t: new Date().toTimeString().slice(0, 8), who: c.project || 'docker', color: s ? s.color : '#9a90c0', what: `🐳 ${c.service || c.name} ${what}` });
+  while (logRows.length > 60) logRows.shift(); logDirty = true;
+}
+
+// tooltip dos amplificadores
+const tip = document.getElementById('tip');
+cv.addEventListener('mousemove', (e) => {
+  const lx = (e.clientX * view.dpr - view.ox) / view.s, ly = (e.clientY * view.dpr - view.oy) / view.s;
+  const a = ampsCache.find((it) => lx >= it.slot.x && lx < it.slot.x + 24 && ly >= it.slot.y && ly < it.slot.y + 20);
+  if (!a) { tip.classList.add('hide'); return; }
+  tip.textContent = '';
+  const b = document.createElement('b'); b.textContent = '🐳 ' + (a.c.service || a.c.name); b.style.color = a.s ? a.s.color : '#ece7ff';
+  const l1 = document.createElement('span'); l1.textContent = (a.c.project ? a.c.project + ' · ' : '') + a.c.image;
+  const l2 = document.createElement('div'); l2.textContent = a.c.status + (a.c.ports ? '  ' + a.c.ports : '');
+  tip.append(b, l1, l2);
+  tip.style.left = Math.min(innerWidth - 320, e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+  tip.classList.remove('hide');
+});
+cv.addEventListener('mouseleave', () => tip.classList.add('hide'));
+
+// ======================================================================
+//  Chips (legenda de projetos) e registro
+// ======================================================================
+let chipsKey = '';
+function renderChips() {
+  const el = document.getElementById('chips');
+  const t = now();
+  const data = [...sessions.values()].filter((s) => !s.ended).sort((a, b) => a.order - b.order).map((s) => ({
+    id: s.id, name: s.project || 'sessão', color: s.color, st: t - s.lastAt > SLEEP_MS ? 'sleep' : s.status,
+    n: membersOf(s.id).filter((m) => m.role === 'sub').length, hl: highlight === s.id,
+  }));
+  const dk = docker.available ? docker.list.length : -1;
+  const key = JSON.stringify([data, dk, coxia.length]);
+  if (key === chipsKey) return; chipsKey = key;
+  el.textContent = '';
+  for (const d of data) {
+    const c = document.createElement('div'); c.className = 'chip panel' + (d.hl ? ' hl' : ''); c.style.color = d.color;
+    c.title = 'Clique para destacar este projeto';
+    const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = d.color;
+    const name = document.createElement('span'); name.textContent = d.name; name.style.color = '#ece7ff';
+    const dot = document.createElement('span'); dot.className = 'dot ' + d.st;
+    const small = document.createElement('small'); small.textContent = d.n ? `+${d.n}` : '';
+    c.append(sw, name, dot, small);
+    c.onclick = () => { highlight = highlight === d.id ? null : d.id; chipsKey = ''; };
+    el.append(c);
+  }
+  if (dk >= 0) {
+    const c = document.createElement('div'); c.className = 'chip panel docker'; c.title = 'Containers Docker de pé';
+    c.textContent = `🐳 ${dk}` + (ampsCache.overflow ? ` (+${ampsCache.overflow} fora da parede)` : '');
+    el.append(c);
+  }
+}
+
+function describe(ev) {
+  const icon = { read: '📖', write: '✍️', bash: '⌨️', web: '🌐', mcp: '🔌', task: '📣', plan: '📋', other: '🎵' }[toolKind(ev.tool)];
+  switch (ev.event) {
+    case 'SessionStart': return '🎤 subiu ao palco';
+    case 'UserPromptSubmit': return '📝 novo pedido';
+    case 'PreToolUse': return `${icon} ${ev.tool}${ev.detail && ev.detail !== ev.tool ? ' · ' + ev.detail : ''}`;
+    case 'PostToolUseFailure': return `💥 falhou: ${ev.tool}`;
+    case 'PermissionRequest': return `✋ permissão: ${ev.tool}${ev.detail ? ' · ' + ev.detail : ''}`;
+    case 'Notification': return '🔔 ' + (ev.note || 'notificação');
+    case 'Stop': return '🤘 terminou, sua vez';
+    case 'SubagentStart': return `🎻 entrou: ${ev.agentType || 'agente'}`;
+    case 'SubagentStop': return `👋 saiu: ${ev.agentType || 'agente'}`;
+    case 'PreCompact': return '🗜️ compactando contexto';
+    case 'SessionEnd': return '🚪 saiu do palco';
+  }
+  return ev.event;
+}
+function pushLog(ev, s, m) {
+  if (ev.event === 'PostToolUse') return;
+  const sub = m && m.role === 'sub' && ev.event !== 'SubagentStart' && ev.event !== 'SubagentStop';
+  logRows.push({ t: new Date(ev.ts || now()).toTimeString().slice(0, 8), who: sub ? m.label : (s.project || 'Claude'), color: s.color, what: describe(ev) });
+  while (logRows.length > 60) logRows.shift();
+  logDirty = true;
+}
+let logDirty = true;
+function renderLog() {
+  if (!logDirty) return; logDirty = false;
+  const box = document.getElementById('logRows'); box.textContent = '';
+  for (const r of logRows.slice(-9)) {
+    const row = document.createElement('div'); row.className = 'row';
+    const a = document.createElement('span'); a.className = 't'; a.textContent = r.t;
+    const b = document.createElement('span'); b.className = 'who'; b.textContent = r.who; b.style.color = r.color || '#3ef2ff';
+    const c = document.createElement('span'); c.className = 'what'; c.textContent = r.what;
+    row.append(a, b, c); box.append(row);
+  }
+}
+
+// ======================================================================
+//  Partículas
+// ======================================================================
+function addP(p) { if (particles.length < 700) particles.push(p); }
+function confetti() {
+  const cols = ['#ff4fa3', '#3ef2ff', '#ffe66d', '#7dff9a', '#b48cff', '#ffffff', '#ff8a3d'];
+  for (let i = 0; i < 110; i++) addP({ k: 'conf', x: Math.random() * W, y: -Math.random() * 40, vx: (Math.random() - .5) * 30, vy: 25 + Math.random() * 40, life: 0, max: 3.2 + Math.random() * 1.5, c: cols[i % cols.length], ph: Math.random() * 6 });
+}
+function burst(m, c, n) { for (let i = 0; i < n; i++) addP({ k: 'spark', x: m.x, y: m.y - 24, vx: (Math.random() - .5) * 90, vy: -Math.random() * 80, life: 0, max: .6 + Math.random() * .4, c }); }
+function puff(x, y) { for (let i = 0; i < 16; i++) addP({ k: 'puff', x: x + (Math.random() - .5) * 16, y: y + Math.random() * 18, vx: (Math.random() - .5) * 20, vy: -10 - Math.random() * 15, life: 0, max: 1 + Math.random() * .6, c: '#e8e4f8' }); }
+
+// ======================================================================
+//  Personagens
+// ======================================================================
+function effAct(m) {
+  const s = sessions.get(m.sid);
+  if ((m.act === 'idle' || m.act === 'yourturn') && s && now() - s.lastAt > SLEEP_MS) return 'sleep';
+  return m.act;
+}
+function poseFor(m, t) {
+  const act = effAct(m), E = (ACT[act] || ACT.idle).e;
+  const beat = t * (4 + E * 5) + m.phase;
+  let bob = E ? Math.round(Math.max(0, Math.sin(beat)) * (1 + E * 1.4)) : Math.round((Math.sin(t * 1.7 + m.phase) + 1) * .5);
+  let headDY = act === 'bash' ? (Math.sin(beat) > .2 ? 2 : 0) : 0;
+  let special = null;
+  if (act === 'wait' || act === 'error') special = 'hand';
+  if (act === 'done') special = (now() - m.actAt) < 1100 ? 'bow' : 'cheer';
+  if (act === 'sleep') special = 'sleep';
+  if (act === 'task' && m.role === 'leader') special = 'point';
+  if (special === 'bow') { bob = 3; headDY = 3; }
+  if (special === 'sleep') { bob = 1; headDY = 2; }
+  if (special === 'cheer') bob = Math.round(Math.abs(Math.sin(t * 8)) * 2);
+  const blink = ((t + m.phase) % 4) < .13;
+  const eyes = special === 'sleep' || special === 'bow' || blink ? 'closed' : act === 'read' ? 'down' : 'open';
+  const singing = m.role === 'leader' && m.station && m.station.startsWith('mic') && (act === 'sing' || (E > 0 && Math.sin(beat * 1.5) > -.2));
+  return { act, E, beat, bob, headDY, special, eyes, mouth: singing || special === 'cheer' ? 'open' : 'closed', osc: E ? Math.sin(beat * 2) : 0 };
+}
+const IDLE_POSE = { act: 'idle', E: 0, beat: 0, bob: 0, headDY: 0, osc: 0 };
+
+function drawBody(m, x, y, p, opt = {}) {
+  const L = m.look; x = Math.round(x); y = Math.round(y);
+  const tt = y - 26 + p.bob + (opt.sit ? 6 : 0);
+  if (!opt.sit) {
+    const a = opt.walk ? Math.round(Math.sin(opt.walk) * 2) : 0;
+    R(x - 5 + a, tt + 14, 4, y - 2 - (tt + 14), L.pants); R(x + 1 - a, tt + 14, 4, y - 2 - (tt + 14), shade(L.pants, .85));
+    R(x - 6 + a, y - 2, 5, 2, '#14101c'); R(x + 1 - a, y - 2, 5, 2, '#14101c');
+  } else if (opt.legs) {
+    R(x - 7, y - 8, 14, 3, '#2a2233'); line(x - 5, y - 5, x - 6, y, '#2a2233'); line(x + 5, y - 5, x + 6, y, '#2a2233'); // banquinho
+    R(x - 5, tt + 14, 4, y - 2 - (tt + 14), L.pants); R(x + 1, tt + 14, 4, y - 2 - (tt + 14), shade(L.pants, .85));
+    R(x - 6, y - 2, 5, 2, '#14101c'); R(x + 1, y - 2, 5, 2, '#14101c');
+  }
+  const ht = tt - 12 + p.headDY;
+  if (L.hair === 'long') R(x - 6, ht + 1, 12, 13, L.hairC);
+  if (L.hair === 'afro') circ(x, ht + 3, 8, L.hairC);
+  R(x - 7, tt, 14, 14, L.shirt); R(x + 4, tt, 3, 14, shade(L.shirt, .78));
+  if (L.jacket) { R(x - 7, tt, 4, 14, L.jacket); R(x + 3, tt, 4, 14, L.jacket); R(x - 7, tt, 1, 14, shade(L.jacket, 1.6)); R(x - 3, tt, 1, 3, shade(L.jacket, 1.4)); R(x + 2, tt, 1, 3, shade(L.jacket, 1.4)); }
+  R(x - 7, tt + 12, 14, 2, '#1a1622'); P(x, tt + 12, '#c9a227');
+  R(x - 2, tt - 2, 4, 2, shade(L.skin, .82));
+  R(x - 5, ht, 10, 10, L.skin); R(x + 3, ht, 2, 10, shade(L.skin, .88)); R(x - 5, ht + 9, 10, 1, shade(L.skin, .85));
+  if (L.hair !== 'long' && L.hair !== 'afro') { P(x - 6, ht + 4, L.skin); P(x + 5, ht + 4, shade(L.skin, .8)); }
+  const ec = '#1b1226';
+  if (L.shades && p.eyes !== 'closed') { R(x - 4, ht + 4, 8, 2, '#0b0b10'); P(x - 3, ht + 4, '#6a6a8a'); P(x + 2, ht + 4, '#6a6a8a'); }
+  else if (p.eyes === 'closed') { R(x - 3, ht + 5, 2, 1, ec); R(x + 1, ht + 5, 2, 1, ec); }
+  else if (p.eyes === 'down') { R(x - 3, ht + 5, 2, 2, ec); R(x + 1, ht + 5, 2, 2, ec); }
+  else { R(x - 3, ht + 4, 2, 2, ec); R(x + 1, ht + 4, 2, 2, ec); P(x - 3, ht + 4, '#fff'); P(x + 1, ht + 4, '#fff'); }
+  if (p.mouth === 'open') { R(x - 1, ht + 7, 3, 2, '#4a1020'); P(x, ht + 8, '#c2405a'); }
+  else R(x - 1, ht + 8, 3, 1, shade(L.skin, .6));
+  const hc = L.hairC;
+  switch (L.hair) {
+    case 'long': R(x - 6, ht - 2, 12, 4, hc); R(x - 6, ht + 2, 2, 10, hc); R(x + 4, ht + 2, 2, 10, hc); R(x - 4, ht + 2, 3, 1, hc); P(x - 3, ht - 2, shade(hc, 1.8)); break;
+    case 'mohawk': R(x - 1, ht - 6, 3, 7, hc); R(x - 5, ht, 10, 1, shade(L.skin, .8)); P(x, ht - 6, shade(hc, 1.5)); break;
+    case 'short': R(x - 6, ht - 2, 12, 4, hc); R(x - 6, ht + 2, 1, 3, hc); R(x + 5, ht + 2, 1, 3, hc); break;
+    case 'cap': R(x - 6, ht - 2, 12, 4, '#20202a'); R(x - 6, ht + 1, 12, 1, '#2f2f3d'); R(x - 2, ht - 1, 4, 1, '#ff4fa3'); R(x - 6, ht + 2, 1, 3, hc); R(x + 5, ht + 2, 1, 3, hc); break;
+    case 'afro': R(x - 5, ht - 1, 10, 2, hc); break;
+    case 'bun': R(x - 6, ht - 2, 12, 3, hc); circ(x, ht - 5, 3, hc); R(x - 6, ht + 1, 1, 4, hc); R(x + 5, ht + 1, 1, 4, hc); break;
+    case 'spiky': for (let i = 0; i < 5; i++) R(x - 6 + i * 3 - (i > 3 ? 1 : 0), ht - 4 - (i % 2) * 2, 2, 5, hc); R(x - 6, ht - 1, 12, 3, hc); break;
+  }
+  return { x, y, tt, ht };
+}
+function drawArms(geo, hl, hr, L) {
+  const { x, tt } = geo, sc = L.jacket || L.shirt;
+  line(x - 7, tt + 2, hl[0], hl[1], sc, 3); line(x + 6, tt + 2, hr[0], hr[1], sc, 3);
+  R(hl[0] - 1, hl[1] - 1, 3, 3, L.skin); R(hr[0] - 1, hr[1] - 1, 3, 3, L.skin);
+}
+function specialHands(geo, p, t) {
+  const { x, tt, ht } = geo;
+  switch (p.special) {
+    case 'hand': return { l: [x - 8, tt + 13], r: [x + 10 + Math.round(Math.sin(t * 9)), ht - 6] };
+    case 'cheer': return { l: [x - 10, ht - 5], r: [x + 10, ht - 5] };
+    case 'point': return { l: [x - 8, tt + 13], r: [x + 14, ht - 3] };
+    case 'bow': return { l: [x - 3, tt + 13], r: [x + 3, tt + 13] };
+    case 'sleep': return { l: [x - 8, tt + 13], r: [x + 8, tt + 13] };
+  }
+  return null;
+}
+
+// ---------------- instrumentos ----------------
+const GOLD = '#d9a93a', GOLD2 = '#f2cf6a', DARKG = '#7a5a10', SILVER = '#d8dce8', WOOD = '#8a3f16', WOOD2 = '#b0592a', BOW = '#e8dcc0';
+const ghost = (x, y, sit) => { const tt = y - 26 + (sit ? 6 : 0); return { x, y, tt, ht: tt - 12 }; };
+function stand(x, y, topY) { line(x, y - 1, x, topY, '#33303e'); line(x, y - 1, x - 4, y, '#33303e'); line(x, y - 1, x + 4, y, '#33303e'); }
+
+function guitarHeld(x, tt, col, bass) {
+  const bx = x + 2, by = tt + 11;
+  line(x - 6, tt + 1, x + 6, tt + 12, '#1b1622');
+  const nx = x - (bass ? 22 : 18), ny = tt + (bass ? -1 : 1);
+  line(bx - 2, by - 2, nx, ny, '#5b3a22', 2);
+  for (let k = 1; k < 4; k++) P(bx - 2 + (nx - bx + 2) * k / 4, by - 2 + (ny - by + 2) * k / 4, '#d8c9a8');
+  R(nx - 3, ny - 2, 4, 3, '#1b1622');
+  ellipse(bx + 2, by + 1, bass ? 8 : 7, 5, shade(col, .65)); ellipse(bx + 2, by, bass ? 7 : 6, 4, col); ellipse(bx - 2, by - 2, 4, 3, col);
+  R(bx, by - 1, 5, 1, '#e8e8f0'); R(bx, by + 1, 5, 1, '#e8e8f0'); P(bx + 5, by + 3, '#c9a227'); P(bx + 3, by + 3, '#c9a227');
+}
+function guitarStand(x, y, col, bass) {
+  line(x - 5, y, x, y - 6, '#33303e'); line(x + 5, y, x, y - 6, '#33303e');
+  line(x, y - 16, x, y - (bass ? 36 : 32), '#5b3a22', 2); R(x - 1, y - (bass ? 39 : 35), 3, 4, '#1b1622');
+  ellipse(x, y - 9, bass ? 7 : 6, 5, shade(col, .65)); ellipse(x, y - 9, bass ? 6 : 5, 4, col); ellipse(x, y - 15, 4, 3, col);
+  R(x - 2, y - 11, 5, 1, '#e8e8f0');
+}
+function micStand(x, y, headY) {
+  const sx = x + 9;
+  line(sx, y - 2, sx - 5, y, '#2c2a36'); line(sx, y - 2, sx + 5, y, '#2c2a36');
+  line(sx, y - 2, sx, headY + 12, '#3a3a46'); line(sx, headY + 12, x + 4, headY + 9, '#3a3a46');
+  R(x + 2, headY + 7, 3, 3, '#9aa0b5'); P(x + 2, headY + 7, '#e0e4f0');
+}
+function drumKit(x, y, t, E, hitL) {
+  const sh = E ? Math.round(Math.sin(t * 30)) : 0;
+  line(x - 23, y, x - 23, y - 24, '#5a5a66'); ellipse(x - 23, y - 24 + (hitL && E ? 1 : 0), 6, 1, '#e0b84a'); ellipse(x - 23, y - 26, 6, 1, '#f2cf6a');
+  line(x + 23, y, x + 21, y - 30, '#5a5a66'); ellipse(x + 21, y - 30 + sh, 7, 1, '#f2cf6a');
+  R(x - 12, y - 24, 8, 6, '#b3263d'); R(x - 12, y - 24, 1, 6, '#d94a5e'); ellipse(x - 8, y - 24, 4, 1, '#ece8f4');
+  R(x + 3, y - 24, 8, 6, '#b3263d'); R(x + 3, y - 24, 1, 6, '#d94a5e'); ellipse(x + 7, y - 24, 4, 1, '#ece8f4');
+  R(x - 20, y - 15, 9, 5, '#c8c8d4'); ellipse(x - 16, y - 15, 4, 1, '#f4f4fa'); line(x - 16, y - 10, x - 16, y - 1, '#5a5a66');
+  R(x + 12, y - 16, 10, 13, '#b3263d'); R(x + 12, y - 16, 1, 13, '#d94a5e'); ellipse(x + 17, y - 16, 5, 1, '#ece8f4');
+  circ(x, y - 9, 9, '#c8c8d4'); circ(x, y - 9, 8, '#1d1730'); circ(x, y - 9, 4, '#ff4fa3'); circ(x, y - 9, 2, '#1d1730');
+}
+function keyboard(x, y, synth, t, E, col) {
+  line(x - 12, y, x + 10, y - 14, '#2c2c36'); line(x + 12, y, x - 10, y - 14, '#2c2c36');
+  R(x - 16, y - 18, 32, 5, synth ? '#2b2d42' : '#111118'); R(x - 16, y - 18, 32, 1, synth ? '#4a4d6e' : '#33333f');
+  if (!synth) { R(x - 15, y - 16, 30, 2, '#f1eef8'); for (let i = 0; i < 30; i += 2) if (i % 7 !== 6) P(x - 14 + i, y - 16, '#111118'); }
+  else {
+    for (let i = 0; i < 7; i++) P(x - 13 + i * 2, y - 16, ['#ff4fa3', '#3ef2ff', '#ffe66d'][i % 3]);
+    for (let i = 0; i < 5; i++) R(x + 1 + i * 3, y - 16, 2, 2, E && Math.sin(t * 8 + i) > 0 ? col : '#3a3c55');
+  }
+}
+function congas(x, y) {
+  R(x - 11, y - 15, 8, 15, '#8b4a2b'); R(x - 11, y - 15, 2, 15, '#a65e38'); R(x - 11, y - 10, 8, 1, '#c9a227'); ellipse(x - 7, y - 15, 4, 1, '#efe2c4');
+  R(x + 3, y - 13, 8, 13, '#7a3f25'); R(x + 3, y - 13, 2, 13, '#94532f'); R(x + 3, y - 8, 8, 1, '#c9a227'); ellipse(x + 7, y - 13, 4, 1, '#efe2c4');
+}
+function sax(x, y, geo, p) {
+  const idle = !geo; geo = geo || ghost(x, y); const { tt, ht } = geo;
+  if (idle) stand(x + 3, y, tt + 13);
+  line(x + 1, ht + 9, x + 3, tt + 2, GOLD, 1);
+  line(x + 3, tt + 2, x + 2, tt + 12, GOLD, 3);
+  line(x + 2, tt + 13, x + 7, tt + 9, GOLD, 3);
+  ellipse(x + 8, tt + 7, 3, 2, GOLD2); P(x + 8, tt + 7, DARKG);
+  for (let k = 0; k < 4; k++) P(x + 4, tt + 4 + k * 2, '#fff3c4');
+  return idle ? null : { l: [x + 1, tt + 4], r: [x + 4, tt + 9] };
+}
+function trumpet(x, y, geo, p) {
+  const idle = !geo; geo = geo || ghost(x, y); const { ht } = geo;
+  const lift = idle ? 0 : Math.round(Math.max(0, Math.sin(p.beat * .5)) * 2 * p.E);
+  if (idle) stand(x + 9, y, ht + 9);
+  line(x + 2, ht + 8, x + 15, ht + 8 - lift, GOLD, 2);
+  R(x + 15, ht + 5 - lift, 3, 7, GOLD2); P(x + 17, ht + 8 - lift, DARKG);
+  for (const k of [7, 9, 11]) R(x + k, ht + 5 - lift, 1, 3, GOLD2);
+  return idle ? null : { l: [x + 6, ht + 10 - lift], r: [x + 10, ht + 7 - lift] };
+}
+function trombone(x, y, geo, p) {
+  const idle = !geo; geo = geo || ghost(x, y); const { ht } = geo;
+  const s = idle ? 0 : Math.round((p.osc + 1) * 3 * p.E);
+  if (idle) stand(x + 8, y, ht + 11);
+  line(x - 6, ht + 7, x + 3, ht + 7, GOLD, 1); R(x - 9, ht + 4, 3, 7, GOLD2);
+  line(x + 3, ht + 7, x + 3, ht + 9, GOLD, 1);
+  line(x + 3, ht + 9, x + 19 + s, ht + 9, GOLD, 1); line(x + 3, ht + 11, x + 19 + s, ht + 11, GOLD, 1); R(x + 19 + s, ht + 9, 1, 3, GOLD);
+  return idle ? null : { l: [x + 2, ht + 9], r: [x + 12 + s, ht + 11] };
+}
+function flute(x, y, geo, p) {
+  const idle = !geo; geo = geo || ghost(x, y); const { ht } = geo;
+  if (idle) stand(x + 7, y, ht + 10);
+  line(x - 3, ht + 8, x + 17, ht + 9, SILVER, 2);
+  for (let k = 0; k < 5; k++) P(x + 3 + k * 3, ht + 8, '#8a90a5');
+  return idle ? null : { l: [x + 4, ht + 10], r: [x + 12, ht + 10] };
+}
+function clarinet(x, y, geo, p) {
+  const idle = !geo; geo = geo || ghost(x, y); const { tt, ht } = geo;
+  if (idle) stand(x + 3, y, tt + 14);
+  line(x + 1, ht + 9, x + 3, tt + 13, '#1b1622', 2); R(x + 1, tt + 13, 5, 2, '#2a2433');
+  P(x + 2, tt + 3, SILVER); P(x + 2, tt + 6, SILVER); P(x + 3, tt + 9, SILVER);
+  return idle ? null : { l: [x + 1, tt + 3], r: [x + 3, tt + 8] };
+}
+function violin(x, y, geo, p) {
+  const idle = !geo; geo = geo || ghost(x, y); const { tt } = geo;
+  if (idle) stand(x - 8, y, tt + 6);
+  ellipse(x - 8, tt + 3, 4, 3, WOOD); ellipse(x - 8, tt + 3, 2, 1, WOOD2);
+  line(x - 11, tt + 2, x - 20, tt - 1, '#2a1a10', 1); R(x - 22, tt - 2, 2, 2, '#2a1a10'); P(x - 5, tt + 2, '#111');
+  if (idle) return null;
+  const rh = [x + 5 + Math.round(p.osc * 4 * p.E), tt + 6];
+  line(rh[0], rh[1], rh[0] - 16, rh[1] - 5, BOW, 1);
+  return { l: [x - 16, tt], r: rh };
+}
+function cello(x, y, geo, p) {
+  const idle = !geo; const cx = x + 3;
+  ellipse(cx, y - 9, 7, 8, WOOD); ellipse(cx, y - 18, 5, 4, WOOD); ellipse(cx, y - 9, 5, 6, WOOD2); ellipse(cx, y - 18, 3, 2, WOOD2);
+  P(cx - 2, y - 11, '#2a120a'); P(cx + 2, y - 11, '#2a120a'); line(cx, y - 1, cx, y, '#999');
+  const top = idle ? [cx, y - 40] : [x - 6, y - 38];
+  line(cx, y - 22, top[0], top[1], '#2a1a10', 2); R(top[0] - 1, top[1] - 2, 3, 2, '#2a1a10');
+  if (idle) return null;
+  const rh = [x + 10 + Math.round(p.osc * 5 * p.E), y - 12];
+  line(rh[0], rh[1], rh[0] - 18, rh[1] + 1, BOW, 1);
+  return { l: [x - 4, y - 31], r: rh };
+}
+function accordion(x, y, geo, p) {
+  const idle = !geo; const tt = idle ? y - 21 : geo.tt;
+  if (idle) { R(x - 7, y - 9, 14, 9, '#3a2f44'); R(x - 7, y - 9, 14, 1, '#4c3f58'); }
+  const w = 14 + (idle ? 0 : Math.round(p.osc * 2 * p.E)); const left = x - Math.round(w / 2);
+  for (let i = 0; i < w; i++) R(left + i, tt + 2, 1, 10, i % 2 ? '#7a1424' : '#c0283c');
+  R(left - 3, tt + 1, 3, 12, '#efe9dc'); for (let k = 0; k < 6; k++) P(left - 2, tt + 2 + k * 2, '#222');
+  R(left + w, tt + 1, 3, 12, '#1b1622'); for (let k = 0; k < 6; k++) P(left + w + 1, tt + 2 + k * 2, SILVER);
+  return idle ? null : { l: [left - 2, tt + 6], r: [left + w + 2, tt + 6] };
+}
+function harp(x, y, geo, p) {
+  const idle = !geo; const hx = x + 7;
+  line(hx, y - 1, hx, y - 40, '#c9a227', 2);
+  line(hx, y - 40, hx + 14, y - 32, '#c9a227', 2);
+  line(hx + 14, y - 32, hx + 3, y - 2, '#8a5a20', 3);
+  for (let i = 1; i < 6; i++) { const sx = hx + i * 2; const yt = y - 40 + Math.round((sx - hx) * 8 / 14) + 1; const yb = y - 32 + Math.round((hx + 14 - sx) / 11 * 30) - 1; line(sx, yt, sx, yb, 'rgba(240,230,200,.75)', 1); }
+  R(hx - 2, y - 2, 7, 2, '#6a4a18');
+  if (idle) return null;
+  return { l: [x + 8, geo.tt + 5 + Math.round(p.osc * 2)], r: [x + 10, geo.tt + 11 - Math.round(p.osc * 2)] };
+}
+function tuba(x, y, geo, p) {
+  const idle = !geo; const tt = idle ? y - 16 : geo.tt, ht = tt - 12;
+  circ(x + 1, tt + 8, 7, GOLD); circ(x + 1, tt + 8, 4, '#b88a24'); circ(x + 1, tt + 8, 2, GOLD);
+  R(x + 5, ht - 1, 4, 13, GOLD); ellipse(x + 7, ht - 2, 5, 2, GOLD2); P(x + 7, ht - 2, DARKG);
+  R(x - 2, tt + 1, 1, 3, GOLD2); R(x, tt + 1, 1, 3, GOLD2);
+  if (idle) return null;
+  line(x + 1, ht + 8, x + 2, tt + 2, GOLD, 1);
+  return { l: [x - 5, tt + 7], r: [x + 2, tt + 3] };
+}
+
+const SEATED = { drums: 1, cello: 1, harp: 1 };
+const PLAY = {
+  mic: (x, y, geo, p) => {
+    micStand(x, y, geo.ht - p.headDY);
+    const singing = p.mouth === 'open' || p.act === 'sing';
+    return { l: p.E > .6 ? [x - 10, geo.ht - 2 + Math.round(p.osc * 2)] : [x - 8, geo.tt + 13], r: singing ? [x + 5, geo.ht + 10] : [x + 8, geo.tt + 13] };
+  },
+  guitar: (x, y, geo, p, t, m) => { guitarHeld(x, geo.tt, m.look.inst, false); return { r: [x + 4, geo.tt + 9 + Math.round(p.osc * 2 * p.E)], l: [x - 13 + (p.E ? Math.round(Math.sin(p.beat * .5) * 2) : 0), geo.tt + 4] }; },
+  bass: (x, y, geo, p) => { guitarHeld(x, geo.tt, '#1f6feb', true); return { r: [x + 4, geo.tt + 9 + Math.round(p.osc * 2 * p.E)], l: [x - 16, geo.tt + 3] }; },
+  drums: (x, y, geo, p, t) => {
+    const hitL = Math.sin(p.beat) > 0; drumKit(x, y, t, p.E, hitL);
+    const up = (h) => (p.E && !h ? 5 : 0);
+    return { l: [x - 11, geo.tt + 10 - up(hitL)], r: [x + 10, geo.tt + 10 - up(!hitL)], sticks: true };
+  },
+  keys: (x, y, geo, p, t) => { keyboard(x, y, false, t, p.E); return { l: [x - 7 + Math.round(p.osc * 2 * p.E), y - 18], r: [x + 6 - Math.round(p.osc * 2 * p.E), y - 18] }; },
+  synth: (x, y, geo, p, t) => { keyboard(x, y, true, t, p.E, ACT[p.act].c); return { l: [x - 7 + Math.round(p.osc * 2 * p.E), y - 18], r: [x + 6 - Math.round(p.osc * 2 * p.E), y - 18] }; },
+  perc: (x, y, geo, p) => { congas(x, y); const hitL = Math.sin(p.beat) > 0; return { l: [x - 7, y - 17 - (p.E && !hitL ? 3 : 0)], r: [x + 7, y - 15 - (p.E && hitL ? 3 : 0)] }; },
+  sax, trumpet, trombone, flute, clarinet, violin, cello, accordion, harp, tuba,
+};
+const IDLE = {
+  mic: (x, y) => micStand(x - 9, y, y - 38),
+  guitar: (x, y) => guitarStand(x, y, '#e63946', false),
+  bass: (x, y) => guitarStand(x, y, '#1f6feb', true),
+  drums: (x, y, t) => drumKit(x, y, t, 0),
+  keys: (x, y, t) => keyboard(x, y, false, t, 0),
+  synth: (x, y, t) => keyboard(x, y, true, t, 0),
+  perc: (x, y) => congas(x, y),
+};
+for (const k of ['sax', 'trumpet', 'trombone', 'flute', 'clarinet', 'violin', 'cello', 'accordion', 'harp', 'tuba']) IDLE[k] = (x, y) => PLAY[k](x, y, null, IDLE_POSE);
+
+function bubble(x, top, act, t) {
+  const ic = ICON[act]; if (!ic) return;
+  const blinkOn = act !== 'wait' || Math.floor(t * 3) % 2 === 0;
+  const bx = Math.round(x - 5), by = Math.round(top - 13);
+  R(bx - 1, by - 1, 11, 11, '#0d0a18');
+  R(bx, by, 9, 9, act === 'wait' ? (blinkOn ? '#ffb000' : '#5a4200') : '#f4f0ff');
+  R(x - 1, by + 9, 2, 1, '#0d0a18');
+  bitmap(ic, bx + 1, by + 1, act === 'wait' ? '#1a1000' : shade(ACT[act].c, act === 'done' || act === 'yourturn' ? .7 : .62));
+}
+
+function drawStation(st, m, t) {
+  const x = st.x, y = st.y;
+  if (!m) { IDLE[st.kind](x, y, t); return; }
+  const s = sessions.get(m.sid);
+  const p = poseFor(m, t);
+  R(x - 7, y, 14, 1, s ? s.color : '#888'); // fita colorida no chão: cor do projeto
+  const geo = drawBody(m, x, y - (st.kind === 'drums' ? 2 : 0), p, { sit: !!SEATED[st.kind], legs: st.kind !== 'drums' });
+  let hands = PLAY[st.kind](x, y, geo, p, t, m);
+  const sp = specialHands(geo, p, t);
+  if (sp) hands = sp;
+  drawArms(geo, hands.l, hands.r, m.look);
+  if (hands.sticks) { line(hands.l[0], hands.l[1], hands.l[0] - 3, hands.l[1] - 5, '#e6d3a3'); line(hands.r[0], hands.r[1], hands.r[0] + 3, hands.r[1] - 5, '#e6d3a3'); }
+  const showBubble = ICON[p.act] && p.act !== 'idle';
+  if (showBubble) bubble(x, geo.ht, p.act, t);
+  m.scr = { x, y: geo.ht - (showBubble ? 15 : 3), act: p.act };
+  const dt = 1 / 60;
+  if (p.E >= .45) { m.emit += dt * p.E * 2.2; while (m.emit > 1) { m.emit--; const dir = Math.random() < .5 ? -1 : 1; addP({ k: 'note', x: x + dir * 9, y: geo.ht + 4, vx: dir * (6 + Math.random() * 12), vy: -16 - Math.random() * 14, life: 0, max: 1.5 + Math.random() * .6, c: ACT[p.act].c }); } }
+  if (p.act === 'mcp' && Math.random() < .35) addP({ k: 'spark', x: x + (Math.random() - .5) * 10, y: y - 2, vx: (Math.random() - .5) * 50, vy: -20 - Math.random() * 40, life: 0, max: .5, c: ['#b48cff', '#3ef2ff', '#ff4fa3'][Math.floor(Math.random() * 3)] });
+  if (p.act === 'sleep') { m.emit += dt * .7; if (m.emit > 1) { m.emit = 0; addP({ k: 'z', x: x + 5, y: geo.ht - 2, vx: 6, vy: -9, life: 0, max: 2.4, c: '#bfb8e6' }); } }
+}
+function drawWalker(m, t) {
+  const p = poseFor(m, t); p.bob = 0; p.headDY = 0;
+  const geo = drawBody(m, m.x, m.y, p, { walk: m.walk });
+  const sw = Math.round(Math.sin(m.walk) * 3);
+  drawArms(geo, [geo.x - 8 - sw, geo.tt + 12], [geo.x + 8 + sw, geo.tt + 12], m.look);
+  m.scr = { x: m.x, y: geo.ht - 3, act: 'idle' };
+}
+
+// ======================================================================
+//  Luzes e plateia
+// ======================================================================
+function lights(t) {
+  g.globalCompositeOperation = 'lighter';
+  for (const [x, c] of [[170, '255,79,163'], [470, '62,242,255']]) {
+    const gr = g.createRadialGradient(x, 110, 4, x, 110, 170);
+    gr.addColorStop(0, `rgba(${c},${.07 + energy * .1 + Math.sin(t * 1.3 + x) * .015})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, 240);
+  }
+  if (energy > .35) {
+    for (const [ox, dir, c] of [[40, 1, '255,79,163'], [600, -1, '62,242,255']]) {
+      const a = Math.sin(t * .8 * dir) * .55 + dir * .35, len = 380;
+      const ex = ox + Math.sin(a) * len, ey = 18 + Math.cos(a) * len;
+      const gr = g.createLinearGradient(ox, 18, ex, ey); gr.addColorStop(0, `rgba(${c},${.12 * energy})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(ox - 2, 18); g.lineTo(ox + 2, 18); g.lineTo(ex + 18, ey); g.lineTo(ex - 18, ey); g.fill();
+    }
+  }
+  for (const m of members.values()) {
+    if (m.state !== 'present' || !m.station) continue;
+    const st = stationOf(m.station), act = effAct(m), A = ACT[act] || ACT.idle;
+    let a = A.e ? .1 + A.e * .1 : .05;
+    if (act === 'wait') a = Math.floor(t * 3) % 2 ? .22 : .06;
+    if (act === 'done' || act === 'sing') a = .24;
+    if (act === 'sleep') a = .02;
+    if (highlight && m.sid !== highlight) a *= .3;
+    const [r, gg, b] = hex2rgb(A.c);
+    const gr = g.createLinearGradient(0, 20, 0, st.y);
+    gr.addColorStop(0, `rgba(${r},${gg},${b},${a * 1.4})`); gr.addColorStop(1, `rgba(${r},${gg},${b},${a * .5})`);
+    g.fillStyle = gr; g.beginPath(); g.moveTo(st.x - 2, 20); g.lineTo(st.x + 2, 20); g.lineTo(st.x + 20, st.y); g.lineTo(st.x - 20, st.y); g.fill();
+    g.fillStyle = `rgba(${r},${gg},${b},${a * 1.1})`; g.beginPath(); g.ellipse(st.x, st.y, 22, 5, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = `rgba(${r},${gg},${b},.9)`; g.fillRect(st.x - 2, 20, 4, 1);
+  }
+  g.globalCompositeOperation = 'source-over';
+}
+function leds(t) {
+  for (let x = 232, i = 0; x < 410; x += 6, i++) { const on = energy > .05 ? (Math.sin(t * 6 - i * .5) > 0) : (i % 4 === 0); R(x, 225, 3, 2, on ? '#ff4fa3' : '#4a2038'); }
+  for (let x = 4, i = 0; x < W; x += 10, i++) { const on = energy > .05 ? Math.sin(t * 4 + i * .7) > -.2 : i % 3 === 0; R(x, 324, 4, 1, on ? '#3ef2ff' : '#1b3c44'); }
+}
+function drawCrowd(t) {
+  const cheer = now() < cheerUntil;
+  for (const c of crowd) {
+    let yy = c.top;
+    if (cheer) yy -= Math.round(Math.abs(Math.sin(t * 9 + c.ph)) * 6);
+    else if (energy > .05) yy -= Math.round(Math.max(0, Math.sin(t * 5 + c.ph)) * energy * 3);
+    if (cheer || (energy > .6 && Math.sin(t * 2 + c.ph) > .6)) { line(c.x - 8, yy + 11, c.x - 12, yy - 6, c.c, 2); line(c.x + 8, yy + 11, c.x + 12, yy - 6, c.c, 2); }
+    ellipse(c.x, yy + 17, 12, 8, c.c); circ(c.x, yy, c.rad, c.c);
+    R(c.x - 2, yy - c.rad, 4, 1, '#3a2f5a');
+    if (c.phone && energy > .3) {
+      const px = c.x + 9, py = yy - 7; line(c.x + 6, yy + 10, px, py + 3, c.c, 2); R(px - 1, py, 3, 4, '#d6ecff');
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(180,220,255,.12)'; g.beginPath(); g.arc(px, py + 2, 6, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
+    }
+  }
+}
+
+// ======================================================================
+//  Loop
+// ======================================================================
+let last = performance.now();
+function update(dt) {
+  const t = now();
+  for (const m of [...members.values()]) {
+    if (m.until !== Infinity && t > m.until) { m.act = m.next || 'idle'; m.until = Infinity; m.next = 'idle'; if (m.act === 'idle') m.detail = ''; }
+    if (m.leaveAt && t > m.leaveAt) { m.leaveAt = 0; removeMember(m, false); continue; }
+    if (m.role === 'sub' && t - m.lastAt > SUB_STALE_MS && m.state !== 'leaving') removeMember(m, false);
+    if (m.state === 'entering' || m.state === 'leaving') {
+      const d = m.tx - m.x, step = 75 * dt;
+      m.walk += dt * 13;
+      if (Math.abs(d) <= step) {
+        m.x = m.tx;
+        if (m.state === 'entering') m.state = 'present';
+        else { freeStation(m); members.delete(m.key); }
+      } else m.x += Math.sign(d) * step;
+    }
+  }
+  for (const s of [...sessions.values()]) {
+    const stale = t - s.lastAt > SESSION_STALE_MS;
+    if (stale && !s.ended) { s.ended = true; s.endedAt = t; for (const m of membersOf(s.id)) removeMember(m, false); }
+    if (s.ended && t - s.endedAt > 4000 && !membersOf(s.id).length) { sessions.delete(s.id); if (highlight === s.id) highlight = null; layoutAmps(); }
+  }
+  let e = 0, n = 0;
+  for (const m of members.values()) if (m.state === 'present') { e += (ACT[effAct(m)] || ACT.idle).e; n++; }
+  const target = n ? Math.min(1, e / Math.max(1, n) * 1.4) : 0;
+  energy += (target - energy) * Math.min(1, dt * 2);
+  for (const p of particles) {
+    p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.k === 'conf') { p.vy += 14 * dt; p.vx += Math.sin(p.life * 4 + p.ph) * 12 * dt; }
+    if (p.k === 'spark') p.vy += 140 * dt;
+    if (p.k === 'note' || p.k === 'z') p.vx *= .99;
+  }
+  particles = particles.filter((p) => p.life < p.max && p.y < H + 10);
+}
+
+let ampsKey = '';
+function render(tm) {
+  const t = tm / 1000;
+  // recalcula a parede de amps quando os projetos mudam
+  const ak = [...sessions.values()].map((s) => s.project + (s.ended ? 'x' : '')).join('|');
+  if (ak !== ampsKey) { ampsKey = ak; layoutAmps(); }
+  G = g;
+  g.drawImage(bg, 0, 0);
+  drawAmps(t);
+  lights(t);
+  leds(t);
+  const items = [];
+  for (const st of STATIONS) {
+    const mm = occ[st.id] && members.get(occ[st.id]);
+    const m = mm && mm.state === 'present' ? mm : null;
+    items.push({ y: st.y, draw: () => drawStation(st, m, t) });
+  }
+  for (const m of members.values()) {
+    if (m.state !== 'present') m.scr = null;
+    if (m.state === 'entering' || m.state === 'leaving') items.push({ y: m.y + .5, draw: () => drawWalker(m, t) });
+  }
+  items.sort((a, b) => a.y - b.y).forEach((i) => i.draw());
+  const anyone = members.size > 0;
+  g.fillStyle = `rgba(6,3,14,${!anyone ? .42 : energy < .05 ? .3 : .18})`; g.fillRect(0, 0, W, 322);
+  const flick = Math.sin(t * 13.7) > .97 || (Math.sin(t * .37) > .985 && Math.sin(t * 40) > 0);
+  g.globalAlpha = flick ? .45 : 1; g.drawImage(sign, (W - sign.width) / 2, 22); g.globalAlpha = 1;
+  for (const p of particles) {
+    const a = Math.max(0, 1 - p.life / p.max);
+    g.globalAlpha = p.k === 'conf' ? Math.min(1, a * 2) : a;
+    if (p.k === 'note') bitmap(NOTE, p.x - 2, p.y - 3, p.c);
+    else if (p.k === 'conf') R(p.x, p.y, Math.sin(p.life * 9 + p.ph) > 0 ? 2 : 1, 2, p.c);
+    else if (p.k === 'z') bitmap(['111', '001', '010', '100', '111'], p.x, p.y, p.c);
+    else if (p.k === 'puff') circ(p.x, p.y, 2 + Math.round(p.life * 2), 'rgba(232,228,248,.5)');
+    else R(p.x, p.y, 1, 1, p.c);
+  }
+  g.globalAlpha = 1;
+  drawCrowd(t);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#07050d'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(low, 0, 0, W, H, view.ox, view.oy, W * view.s, H * view.s);
+  drawLabels();
+  document.getElementById('empty').classList.toggle('hide', anyone);
+}
+
+function pill(x, y, text, fs, color, weight, border) {
+  ctx.font = `${weight} ${fs}px "Cascadia Mono", Consolas, ui-monospace, monospace`;
+  const w = ctx.measureText(text).width + fs * .9, h = fs * 1.45;
+  ctx.fillStyle = 'rgba(10,7,20,.8)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - w / 2, y - h, w, h, h / 2); else ctx.rect(x - w / 2, y - h, w, h);
+  ctx.fill();
+  if (border) { ctx.strokeStyle = border; ctx.lineWidth = Math.max(1, view.dpr * 1.3); ctx.stroke(); }
+  ctx.fillStyle = color; ctx.fillText(text, x, y - h * .26);
+}
+function drawLabels() {
+  const fs = Math.round(Math.max(9, Math.min(15, view.s * 2.9)));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  const list = [...members.values()].filter((m) => m.scr).sort((a, b) => a.scr.y - b.scr.y);
+  for (const m of list) {
+    const s = sessions.get(m.sid); if (!s) continue;
+    ctx.globalAlpha = highlight && m.sid !== highlight ? .25 : 1;
+    const sx = view.ox + m.scr.x * view.s, sy = view.oy + m.scr.y * view.s;
+    const A = ACT[m.scr.act] || ACT.idle;
+    let name = m.role === 'leader' ? '🎤 ' + (s.project || 'Claude') : m.label;
+    if (name.length > 22) name = name.slice(0, 21) + '…';
+    let what = A.verb;
+    if (m.detail && m.detail !== what && !['sleep', 'yourturn', 'done', 'idle', 'sing'].includes(m.scr.act)) what += (what ? ' · ' : '') + m.detail;
+    if (what.length > 26) what = what.slice(0, 25) + '…';
+    let y = sy;
+    if (what) { pill(sx, y, what, Math.round(fs * .86), A.c, 500); y -= fs * 1.6; }
+    pill(sx, y, name, fs, m.role === 'leader' ? s.color : '#ffffff', 700, s.color);
+  }
+  ctx.globalAlpha = 1;
+  if (coxia.length) pill(view.ox + 36 * view.s, view.oy + 168 * view.s, `+${coxia.length} na coxia`, Math.round(fs * .9), '#c9c3e6', 600);
+}
+
+function frame(tm) {
+  const dt = Math.min(.1, (tm - last) / 1000); last = tm;
+  update(dt); render(tm); renderLog();
+  requestAnimationFrame(frame);
+}
+setInterval(renderChips, 400);
+
+// ======================================================================
+//  Som e notificações
+// ======================================================================
+const store = { get(k, d) { try { const v = localStorage.getItem('nirva:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('nirva:' + k, JSON.stringify(v)); } catch { } } };
+let soundOn = store.get('sound', false), notifyOn = store.get('notify', false), logOn = store.get('log', true);
+let actx = null;
+function audio() { try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch { actx = null; } return actx; }
+function chime() {
+  if (!soundOn || !audio()) return; const t0 = actx.currentTime;
+  [880, 1318.5].forEach((f, i) => { const o = actx.createOscillator(), gn = actx.createGain(); o.type = 'sine'; o.frequency.value = f; const st = t0 + i * .13; gn.gain.setValueAtTime(0, st); gn.gain.linearRampToValueAtTime(.16, st + .01); gn.gain.exponentialRampToValueAtTime(.001, st + .6); o.connect(gn).connect(actx.destination); o.start(st); o.stop(st + .7); });
+}
+function powerChord() {
+  if (!soundOn || !audio()) return; const t0 = actx.currentTime;
+  const sh = actx.createWaveShaper(); const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (3 + 300) * x * 20 * Math.PI / 180 / (Math.PI + 300 * Math.abs(x)); } sh.curve = c;
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+  const gn = actx.createGain(); gn.gain.setValueAtTime(.0001, t0); gn.gain.exponentialRampToValueAtTime(.09, t0 + .02); gn.gain.exponentialRampToValueAtTime(.001, t0 + 1.8);
+  sh.connect(lp).connect(gn).connect(actx.destination);
+  [82.41, 123.47, 164.81].forEach((f) => [-7, 7].forEach((d) => { const o = actx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = d; o.connect(sh); o.start(t0); o.stop(t0 + 1.9); }));
+}
+function alertUser(s, text) {
+  chime();
+  if (notifyOn && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    try { new Notification('Nirva Stage: ' + (s.project || 'Claude'), { body: text, tag: 'nirva-' + s.id }); } catch { }
+  }
+}
+
+// ======================================================================
+//  Controles
+// ======================================================================
+const $ = (id) => document.getElementById(id);
+function syncButtons() {
+  $('bSound').textContent = soundOn ? '🔊' : '🔇'; $('bSound').classList.toggle('on', soundOn);
+  $('bNotify').textContent = notifyOn ? '🔔' : '🔕'; $('bNotify').classList.toggle('on', notifyOn);
+  $('bLog').classList.toggle('on', logOn); $('log').classList.toggle('hide', !logOn);
+  $('bDemo').classList.toggle('on', demoOn);
+}
+function toggleSound() { soundOn = !soundOn; store.set('sound', soundOn); if (soundOn) { audio(); chime(); } syncButtons(); }
+async function toggleNotify() {
+  if (!notifyOn && 'Notification' in window && Notification.permission !== 'granted') { try { await Notification.requestPermission(); } catch { } }
+  notifyOn = !notifyOn && 'Notification' in window && Notification.permission === 'granted'; store.set('notify', notifyOn); syncButtons();
+}
+function toggleLog() { logOn = !logOn; store.set('log', logOn); syncButtons(); }
+function toggleHelp() { $('help').classList.toggle('hide'); }
+function toggleFull() { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => { }); else document.exitFullscreen?.(); }
+$('bSound').onclick = toggleSound; $('bNotify').onclick = toggleNotify; $('bLog').onclick = toggleLog;
+$('bHelp').onclick = toggleHelp; $('bFull').onclick = toggleFull; $('bDemo').onclick = () => (demoOn ? stopDemo() : startDemo('eventos simulados'));
+$('demoStop').onclick = () => stopDemo();
+$('help').onclick = toggleHelp;
+addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 's') toggleSound(); else if (k === 'n') toggleNotify(); else if (k === 'l') toggleLog();
+  else if (k === 'h' || k === '?') toggleHelp(); else if (k === 'f') toggleFull();
+  else if (k === 'd') demoOn ? stopDemo() : startDemo('eventos simulados');
+  else if (k === 'escape') { $('help').classList.add('hide'); highlight = null; chipsKey = ''; }
+});
+
+// ======================================================================
+//  Doações: PIX (BR Code estático, padrão do Banco Central) e PayPal
+// ======================================================================
+function pixPayload({ key, name, city }) {
+  const clean = (s, n) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 .\-]/g, '').toUpperCase().slice(0, n).trim();
+  const tlv = (id, v) => id + String(v.length).padStart(2, '0') + v;
+  const body = tlv('00', '01') + tlv('26', tlv('00', 'br.gov.bcb.pix') + tlv('01', String(key).trim())) +
+    tlv('52', '0000') + tlv('53', '986') + tlv('58', 'BR') + tlv('59', clean(name, 25) || 'NIRVA STAGE') + tlv('60', clean(city, 15) || 'SAO PAULO') +
+    tlv('62', tlv('05', '***')) + '6304';
+  let crc = 0xFFFF;
+  for (let i = 0; i < body.length; i++) { crc ^= body.charCodeAt(i) << 8; for (let b = 0; b < 8; b++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF; }
+  return body + crc.toString(16).toUpperCase().padStart(4, '0');
+}
+(function setupDonate() {
+  const hasPix = !!(DONATE.pix && DONATE.pix.key), hasPaypal = !!DONATE.paypal;
+  if (!hasPix && !hasPaypal) return;
+  $('bDonate').classList.remove('hide');
+  $('pixArea').style.display = hasPix ? '' : 'none'; $('pixCopy').style.display = hasPix ? '' : 'none';
+  if (hasPix) {
+    const code = pixPayload(DONATE.pix);
+    $('pixCode').value = code;
+    try { const qr = window.qrcode(0, 'M'); qr.addData(code); qr.make(); $('pixQr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
+    catch { $('pixQr').style.display = 'none'; }
+    $('pixCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(code); $('donateNote').textContent = 'PIX copiado! Cole no app do seu banco. 💚'; }
+      catch { $('pixCode').select(); $('donateNote').textContent = 'Selecionei o código: é só copiar (Ctrl+C).'; }
+    };
+  }
+  if (hasPaypal) $('paypalLink').href = DONATE.paypal; else $('paypalLink').style.display = 'none';
+  if (DONATE.github) $('ghLink').href = DONATE.github; else $('ghLink').style.display = 'none';
+  const open = () => { $('donate').classList.remove('hide'); $('donateNote').textContent = ''; };
+  const close = () => $('donate').classList.add('hide');
+  $('bDonate').onclick = open; $('donateClose').onclick = close;
+  $('donate').onclick = (e) => { if (e.target.id === 'donate') close(); };
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+})();
+
+// ======================================================================
+//  Conexão com o servidor
+// ======================================================================
+function setConn(kind, text) { const c = $('conn'); c.className = kind; c.querySelector('span').textContent = text; }
+const params = new URLSearchParams(location.search);
+function resetAll() { sessions.clear(); members.clear(); for (const k of Object.keys(occ)) delete occ[k]; coxia = []; logRows.length = 0; logDirty = true; }
+function connect() {
+  if (location.protocol === 'file:' || params.has('demo')) { startDemo(params.has('demo') ? 'eventos simulados' : 'abra pelo servidor para ver ao vivo'); return; }
+  let opened = false, es;
+  try { es = new EventSource('/events'); } catch { startDemo('servidor não encontrado'); return; }
+  const fallback = setTimeout(() => { if (!opened) { es.close(); startDemo('servidor não encontrado'); } }, 3500);
+  es.onopen = () => { opened = true; clearTimeout(fallback); setConn('live', 'ao vivo'); };
+  es.addEventListener('replay', (e) => {
+    let list = []; try { list = JSON.parse(e.data); } catch { }
+    if (!demoOn) resetAll();
+    for (const ev of list) handle(ev, true);
+    logDirty = true;
+  });
+  es.addEventListener('docker', (e) => { try { const d = JSON.parse(e.data); onDocker(d.list, d.available, false); } catch { } });
+  es.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch { } };
+  es.onerror = () => {
+    if (!opened) { clearTimeout(fallback); es.close(); startDemo('servidor não encontrado'); }
+    else setConn('off', 'reconectando…');
+  };
+}
+
+// ======================================================================
+//  Modo demo
+// ======================================================================
+let demoOn = false, demoGen = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const rnd = (n) => Math.floor(Math.random() * n);
+const pick = (a) => a[rnd(a.length)];
+let realDocker = null;
+function startDemo(why) {
+  if (demoOn) return; demoOn = true; const gen = ++demoGen;
+  $('demoBanner').classList.remove('hide'); $('demoWhy').textContent = why || 'eventos simulados';
+  if (!$('conn').classList.contains('live')) setConn('demo', 'demo');
+  syncButtons();
+  if (!docker.available) {
+    realDocker = docker;
+    const mk = (project, service, image, extra = {}) => ({ name: `${project}-${service}-1`, project, service, image, state: 'running', health: '', status: 'Up 2 hours', ports: '', ...extra });
+    onDocker([
+      mk('igreja-hub', 'web', 'node:22-alpine', { ports: '3000->3000' }), mk('igreja-hub', 'api', 'igreja-hub/api', { health: 'healthy' }), mk('igreja-hub', 'db', 'postgres:17', { health: 'healthy' }),
+      mk('igreja-hub', 'redis', 'redis:7'), mk('gestor-documentos', 'api', 'gestor/api', { health: 'starting' }), mk('gestor-documentos', 'minio', 'minio/minio'),
+      mk('gestor-documentos', 'ollama', 'ollama/ollama'), mk('backstage', 'backstage', 'backstage:local', { health: 'unhealthy' }), mk('argocd', 'server', 'argoproj/argocd'),
+    ], true, true);
+  }
+  demoSession(gen, 'igreja-hub', 0);
+  demoSession(gen, 'gestor-documentos', 7000);
+  demoSession(gen, 'nirva-site', 40000);
+}
+function stopDemo() {
+  demoOn = false; demoGen++;
+  for (const m of [...members.values()]) if (m.sid.startsWith('demo-')) { if (m.station && occ[m.station] === m.key) delete occ[m.station]; members.delete(m.key); }
+  coxia = coxia.filter((k) => members.has(k));
+  for (const s of [...sessions.values()]) if (s.id.startsWith('demo-')) sessions.delete(s.id);
+  if (realDocker) { onDocker(realDocker.list, realDocker.available, true); realDocker = null; }
+  $('demoBanner').classList.add('hide');
+  if ($('conn').classList.contains('demo')) setConn('off', 'sem servidor');
+  syncButtons();
+}
+async function demoSession(gen, project, delay) {
+  await sleep(delay); if (gen !== demoGen) return;
+  const sid = 'demo-' + project;
+  const alive = () => gen === demoGen;
+  const E = (event, extra = {}) => { if (alive()) handle({ v: 1, event, session: sid, project, agent: '', agentType: '', tool: '', detail: '', note: '', ts: now(), ...extra }); };
+  const tool = async (name, detail, agent = '', agentType = '', dur = 900 + rnd(1600)) => {
+    E('PreToolUse', { tool: name, detail, agent, agentType }); await sleep(dur);
+    if (Math.random() < .05) E('PostToolUseFailure', { tool: name, detail, agent, agentType });
+    else E('PostToolUse', { tool: name, detail, agent, agentType });
+    await sleep(250 + rnd(600));
+  };
+  const SUBS = ['Explore', 'Plan', 'general-purpose', 'bmad-dev', 'bmad-qa', 'bmad-architect', 'code-reviewer', 'ux-designer', 'tech-writer', 'bmad-pm', 'bmad-analyst'];
+  const WORK = [['Read', 'auth.ts'], ['Grep', 'useSession'], ['Glob', '**/*.tsx'], ['WebSearch', 'nextjs middleware'], ['Edit', 'api/routes.ts'],
+    ['Write', 'members.test.ts'], ['Bash', 'Rodar os testes'], ['Read', 'schema.prisma'], ['mcp__github__create_pull_request', 'github · create_pull_request'],
+    ['WebFetch', 'docs.anthropic.com'], ['Edit', 'Dashboard.tsx'], ['Bash', 'npm run lint'], ['TodoWrite', 'setlist']];
+  E('SessionStart'); await sleep(2200);
+  while (alive()) {
+    E('UserPromptSubmit'); await sleep(1400);
+    await tool('Read', 'README.md'); await tool('TodoWrite', 'setlist');
+    const subs = []; const n = 2 + rnd(5);
+    for (let i = 0; i < n && alive(); i++) {
+      const type = pick(SUBS), id = 'a' + Math.random().toString(36).slice(2, 7);
+      E('PreToolUse', { tool: 'Agent', detail: type });
+      E('SubagentStart', { agent: id, agentType: type }); subs.push({ id, type });
+      await sleep(900);
+    }
+    await Promise.all(subs.map(async (s) => {
+      await sleep(rnd(1500));
+      for (let k = 0, kn = 3 + rnd(5); k < kn && alive(); k++) { const [tn, d] = pick(WORK); await tool(tn, d, s.id, s.type); }
+      E('SubagentStop', { agent: s.id, agentType: s.type });
+    }));
+    if (!alive()) return;
+    E('PostToolUse', { tool: 'Agent', detail: 'banda' });
+    await tool('Edit', 'server.js', '', '', 2200); await tool('Bash', 'Rodar os testes', '', '', 2600);
+    if (Math.random() < .55) { E('PermissionRequest', { tool: 'Bash', detail: 'git push' }); await sleep(4200); E('PostToolUse', { tool: 'Bash', detail: 'git push' }); await sleep(600); }
+    E('Stop'); await sleep(7000 + rnd(6000));
+  }
+}
+
+// ======================================================================
+drawBG();
+syncButtons();
+connect();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

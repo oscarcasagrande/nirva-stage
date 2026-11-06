@@ -1,0 +1,19 @@
+services:
+  nirva-stage:
+    image: ghcr.io/oscarcasagrande/nirva-stage:latest
+    build: .
+    container_name: nirva-stage
+    restart: unless-stopped
+    ports:
+      # só no 127.0.0.1 da sua máquina: ninguém na rede acessa o palco
+      - "127.0.0.1:4321:4321"
+    # --- Containers na parede (opcional) ------------------------------
+    # Dá ao palco acesso de LEITURA à lista de containers. Atenção: quem
+    # acessa o socket do Docker tem, na prática, poder de admin no Docker.
+    # O Nirva Stage só chama GET /containers/json, mas se não quiser isso,
+    # apague as 3 linhas abaixo e defina NIRVA_DOCKER=0.
+    user: "0:0"   # necessário para ler o socket no Docker Desktop
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - NIRVA_DOCKER=1

@@ -1,0 +1,4 @@
+# Botão "Sponsor" do GitHub. O PIX não tem URL, então o segundo link aponta para a seção do README.
+custom:
+  - "https://www.paypal.com/donate/?business=UT8UUZPYC426W&no_recurring=0&currency_code=BRL"
+  - "https://github.com/oscarcasagrande/nirva-stage#-apoie-o-projeto"
