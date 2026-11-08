@@ -44,7 +44,8 @@ process.stdin.on('end', () => {
   const headers = { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) };
   if (TOKEN) headers.authorization = `Bearer ${TOKEN}`;
   try {
-    const req = (target.protocol === 'https:' ? https : http).request(target, { method: 'POST', timeout: 1000, headers }, (res) => { res.resume(); res.on('end', finish); });
+    // autoSelectFamily: no Node 18, "localhost" resolve para ::1 primeiro e não tenta 127.0.0.1
+    const req = (target.protocol === 'https:' ? https : http).request(target, { method: 'POST', timeout: 1000, headers, autoSelectFamily: true }, (res) => { res.resume(); res.on('end', finish); });
     req.on('timeout', () => { req.destroy(); finish(); });
     req.on('error', finish);
     req.end(body);

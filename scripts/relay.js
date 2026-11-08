@@ -57,7 +57,8 @@ function postEvent(target, token, ev) {
     const lib = target.protocol === 'https:' ? https : http;
     const headers = { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) };
     if (token) headers.authorization = `Bearer ${token}`;
-    const req = lib.request(target, { method: 'POST', headers, timeout: SEND_TIMEOUT }, (res) => {
+    // autoSelectFamily: no Node 18, "localhost" resolve para ::1 primeiro e não tenta 127.0.0.1
+    const req = lib.request(target, { method: 'POST', headers, timeout: SEND_TIMEOUT, autoSelectFamily: true }, (res) => {
       res.resume();
       res.on('end', () => resolve(res.statusCode));
       res.on('error', () => resolve(0));
