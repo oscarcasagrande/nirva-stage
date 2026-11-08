@@ -317,19 +317,21 @@ function curve(pts, c) {
   }
 }
 function drawBG() {
+  const T = theme;
   G = bgc;
-  R(0, 0, W, H, '#120d20');
+  bgc.clearRect(0, 0, W, H);
+  R(0, 0, W, H, T.wallBase);
   for (let j = 0; j < 15; j++) for (let i = 0; i < 44; i++) {
     const x = 56 + i * 12, y = 16 + j * 12, odd = (i + j) % 2;
-    R(x, y, 12, 12, odd ? '#221a38' : '#1d1631');
-    const hi = odd ? '#2b2247' : '#251c3e';
+    R(x, y, 12, 12, odd ? T.foamA : T.foamB);
+    const hi = odd ? T.foamHiA : T.foamHiB;
     for (let k = 1; k < 12; k += 3) odd ? R(x + 1, y + k, 10, 1, hi) : R(x + k, y + 1, 1, 10, hi);
-    R(x, y, 12, 1, '#140f22'); R(x, y, 1, 12, '#140f22');
+    R(x, y, 12, 1, T.foamLine); R(x, y, 1, 12, T.foamLine);
   }
   for (const [x0, x1] of [[0, 56], [584, 640]]) {
-    R(x0, 0, x1 - x0, 196, '#161026');
-    for (let y = 0; y < 196; y += 8) for (let x = x0 + ((y / 8) % 2 ? 0 : 6); x < x1; x += 12) R(x, y, 1, 8, '#120c1f');
-    for (let y = 0; y < 196; y += 8) R(x0, y, x1 - x0, 1, '#120c1f');
+    R(x0, 0, x1 - x0, 196, T.sideWall);
+    for (let y = 0; y < 196; y += 8) for (let x = x0 + ((y / 8) % 2 ? 0 : 6); x < x1; x += 12) R(x, y, 1, 8, T.brick);
+    for (let y = 0; y < 196; y += 8) R(x0, y, x1 - x0, 1, T.brick);
   }
   R(8, 40, 40, 54, '#2d1b4e'); R(9, 41, 38, 52, '#3a2563');
   line(30, 46, 20, 64, '#ffe66d', 2); line(20, 64, 30, 64, '#ffe66d', 2); line(30, 64, 22, 84, '#ffe66d', 2);
@@ -338,44 +340,52 @@ function drawBG() {
   circ(612, 64, 13, '#0d0d12'); circ(612, 64, 5, '#ff4fa3'); P(612, 64, '#0d0d12');
   R(596, 84, 30, 2, '#3ef2ff'); R(596, 88, 20, 2, '#3ef2ff');
   // prateleiras dos amplificadores (containers)
-  for (const [x0, x1] of [[58, 228], [412, 582]]) for (const y of [146, 170, 194]) { R(x0, y, x1 - x0, 2, '#2a2233'); R(x0, y + 2, x1 - x0, 1, '#120c1f'); }
-  R(0, 196, W, 4, '#0c0816');
-  for (let r = 0; r < 21; r++) {
-    const y = 200 + r * 6; R(0, y, W, 6, r % 2 ? '#3a2a24' : '#35261f'); R(0, y, W, 1, '#2a1d18');
-    for (let x = (r * 17) % 40; x < W; x += 40) R(x, y, 1, 6, '#2a1d18');
+  for (const [x0, x1] of [[58, 228], [412, 582]]) for (const y of [146, 170, 194]) { R(x0, y, x1 - x0, 2, T.shelf); R(x0, y + 2, x1 - x0, 1, T.brick); }
+  R(0, 196, W, 4, T.baseboard);
+  if (T.floorGrid) {
+    // chão em grade (synthwave): linhas a cada 12 px (horizontais) e 20 px (verticais)
+    R(0, 200, W, 126, T.floorA);
+    for (let y = 200; y < 326; y += 12) R(0, y, W, 1, T.floorLine);
+    for (let x = 0; x < W; x += 20) R(x, 200, 1, 126, T.floorLine);
+  } else for (let r = 0; r < 21; r++) {
+    const y = 200 + r * 6; R(0, y, W, 6, r % 2 ? T.floorA : T.floorB); R(0, y, W, 1, T.floorLine);
+    for (let x = (r * 17) % 40; x < W; x += 40) R(x, y, 1, 6, T.floorLine);
   }
-  R(228, 198, 184, 24, '#2b2233'); for (let k = 0; k < 4; k++) R(228, 198 + k * 6, 184, 1, '#241c2b');
-  R(228, 222, 184, 8, '#1b1422'); R(228, 222, 184, 1, '#3a2f44');
-  R(0, 322, W, 6, '#1b1318'); R(0, 322, W, 1, '#5a4038'); R(0, 328, W, 32, '#0a0712');
+  R(228, 198, 184, 24, T.riserTop); for (let k = 0; k < 4; k++) R(228, 198 + k * 6, 184, 1, T.riserLine);
+  R(228, 222, 184, 8, T.riserFace); R(228, 222, 184, 1, T.riserEdge);
+  R(0, 322, W, 6, T.stageEdge); R(0, 322, W, 1, T.stageEdgeHi); R(0, 328, W, 32, T.pit);
   drawAmp(12, 230); drawAmp(586, 230);
-  R(0, 4, W, 2, '#3a3848'); R(0, 12, W, 2, '#3a3848');
-  for (let x = 0; x < W; x += 8) { line(x, 6, x + 4, 11, '#2c2a38'); line(x + 4, 11, x + 8, 6, '#2c2a38'); }
+  R(0, 4, W, 2, T.truss); R(0, 12, W, 2, T.truss);
+  for (let x = 0; x < W; x += 8) { line(x, 6, x + 4, 11, T.trussZig); line(x + 4, 11, x + 8, 6, T.trussZig); }
   const cans = [...new Set(STATIONS.map((s) => s.x))];
   for (const cx of cans) { R(cx - 1, 13, 2, 2, '#555'); R(cx - 3, 15, 6, 6, '#1a1822'); R(cx - 2, 20, 4, 1, '#55536a'); }
-  curve([[34, 232], [120, 312], [198, 300]], '#151019');
-  curve([[606, 232], [520, 316], [442, 300]], '#151019');
-  curve([[40, 232], [60, 260], [72, 266]], '#151019');
-  curve([[600, 232], [585, 260], [568, 266]], '#151019');
-  curve([[330, 306], [400, 334], [600, 236]], '#151019');
+  curve([[34, 232], [120, 312], [198, 300]], T.cable);
+  curve([[606, 232], [520, 316], [442, 300]], T.cable);
+  curve([[40, 232], [60, 260], [72, 266]], T.cable);
+  curve([[600, 232], [585, 260], [568, 266]], T.cable);
+  curve([[330, 306], [400, 334], [600, 236]], T.cable);
   for (const mx of [262, 380]) { R(mx - 11, 314, 22, 7, '#15121c'); R(mx - 9, 315, 18, 3, '#2a2633'); R(mx - 11, 314, 22, 1, '#3c3646'); }
   R(336, 309, 9, 11, '#efe9dc'); for (let k = 0; k < 4; k++) R(338, 311 + k * 2, 5, 1, '#9a8f80');
   G = g;
 }
 
 const sign = document.createElement('canvas'); sign.width = 170; sign.height = 34;
-(function drawSign() {
-  const sc = sign.getContext('2d'); let x = 8;
-  sc.fillStyle = '#0c0816'; sc.fillRect(0, 0, 170, 34); sc.fillStyle = '#1b1430'; sc.fillRect(1, 1, 168, 32);
+function drawSign() {
+  const T = theme, sc = sign.getContext('2d'); let x = 8;
+  sc.clearRect(0, 0, 170, 34); sc.shadowBlur = 0;
+  sc.fillStyle = T.baseboard; sc.fillRect(0, 0, 170, 34); sc.fillStyle = T.signBg; sc.fillRect(1, 1, 168, 32);
   for (const ch of 'NIRVA ROCK') {
-    const col = x < 76 ? '#ff4fa3' : '#3ef2ff';
+    const col = x < 76 ? T.signA : T.signB;
     sc.shadowColor = col; sc.shadowBlur = 6; sc.fillStyle = col;
     FONT[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') sc.fillRect(x + i * 2, 10 + j * 2, 2, 2); }));
     x += ch === ' ' ? 8 : 12 + (ch === 'I' ? 0 : 3);
   }
-})();
+  sc.shadowBlur = 0;
+}
+drawSign();
 
 const crowd = [];
-(() => { const r = rng(7); for (let i = 0; i < 33; i++) crowd.push({ x: 4 + i * 19.5 + r() * 6, top: 334 + r() * 9, rad: 5 + Math.floor(r() * 2), c: ['#0e0b18', '#120e1f', '#0b0914', '#151127'][i % 4], ph: r() * 6.28, phone: r() < .16 }); })();
+(() => { const r = rng(7); for (let i = 0; i < 33; i++) crowd.push({ x: 4 + i * 19.5 + r() * 6, top: 334 + r() * 9, rad: 5 + Math.floor(r() * 2), i, ph: r() * 6.28, phone: r() < .16 }); })();
 
 // ======================================================================
 //  Estado (um palco só para todas as sessões)
@@ -996,13 +1006,13 @@ function drawWalker(m, t) {
 // ======================================================================
 function lights(t) {
   g.globalCompositeOperation = 'lighter';
-  for (const [x, c] of [[170, '255,79,163'], [470, '62,242,255']]) {
+  for (const [x, c] of [[170, theme.washA], [470, theme.washB]]) {
     const gr = g.createRadialGradient(x, 110, 4, x, 110, 170);
     gr.addColorStop(0, `rgba(${c},${.07 + energy * .1 + Math.sin(t * 1.3 + x) * .015})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = gr; g.fillRect(0, 0, W, 240);
   }
   if (energy > .35) {
-    for (const [ox, dir, c] of [[40, 1, '255,79,163'], [600, -1, '62,242,255']]) {
+    for (const [ox, dir, c] of [[40, 1, theme.washA], [600, -1, theme.washB]]) {
       const a = Math.sin(t * .8 * dir) * .55 + dir * .35, len = 380;
       const ex = ox + Math.sin(a) * len, ey = 18 + Math.cos(a) * len;
       const gr = g.createLinearGradient(ox, 18, ex, ey); gr.addColorStop(0, `rgba(${c},${.12 * energy})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
@@ -1027,20 +1037,21 @@ function lights(t) {
   g.globalCompositeOperation = 'source-over';
 }
 function leds(t) {
-  for (let x = 232, i = 0; x < 410; x += 6, i++) { const on = energy > .05 ? (Math.sin(t * 6 - i * .5) > 0) : (i % 4 === 0); R(x, 225, 3, 2, on ? '#ff4fa3' : '#4a2038'); }
-  for (let x = 4, i = 0; x < W; x += 10, i++) { const on = energy > .05 ? Math.sin(t * 4 + i * .7) > -.2 : i % 3 === 0; R(x, 324, 4, 1, on ? '#3ef2ff' : '#1b3c44'); }
+  for (let x = 232, i = 0; x < 410; x += 6, i++) { const on = energy > .05 ? (Math.sin(t * 6 - i * .5) > 0) : (i % 4 === 0); R(x, 225, 3, 2, on ? theme.ledRiserOn : theme.ledRiserOff); }
+  for (let x = 4, i = 0; x < W; x += 10, i++) { const on = energy > .05 ? Math.sin(t * 4 + i * .7) > -.2 : i % 3 === 0; R(x, 324, 4, 1, on ? theme.ledEdgeOn : theme.ledEdgeOff); }
 }
 function drawCrowd(t) {
   const cheer = now() < cheerUntil;
   for (const c of crowd) {
+    const cc = theme.crowd[c.i % 4];
     let yy = c.top;
     if (cheer) yy -= Math.round(Math.abs(Math.sin(t * 9 + c.ph)) * 6);
     else if (energy > .05) yy -= Math.round(Math.max(0, Math.sin(t * 5 + c.ph)) * energy * 3);
-    if (cheer || (energy > .6 && Math.sin(t * 2 + c.ph) > .6)) { line(c.x - 8, yy + 11, c.x - 12, yy - 6, c.c, 2); line(c.x + 8, yy + 11, c.x + 12, yy - 6, c.c, 2); }
-    ellipse(c.x, yy + 17, 12, 8, c.c); circ(c.x, yy, c.rad, c.c);
-    R(c.x - 2, yy - c.rad, 4, 1, '#3a2f5a');
+    if (cheer || (energy > .6 && Math.sin(t * 2 + c.ph) > .6)) { line(c.x - 8, yy + 11, c.x - 12, yy - 6, cc, 2); line(c.x + 8, yy + 11, c.x + 12, yy - 6, cc, 2); }
+    ellipse(c.x, yy + 17, 12, 8, cc); circ(c.x, yy, c.rad, cc);
+    R(c.x - 2, yy - c.rad, 4, 1, theme.crowdRim);
     if (c.phone && energy > .3) {
-      const px = c.x + 9, py = yy - 7; line(c.x + 6, yy + 10, px, py + 3, c.c, 2); R(px - 1, py, 3, 4, '#d6ecff');
+      const px = c.x + 9, py = yy - 7; line(c.x + 6, yy + 10, px, py + 3, cc, 2); R(px - 1, py, 3, 4, '#d6ecff');
       g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(180,220,255,.12)'; g.beginPath(); g.arc(px, py + 2, 6, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
     }
   }
@@ -1107,7 +1118,7 @@ function render(tm) {
   }
   items.sort((a, b) => a.y - b.y).forEach((i) => i.draw());
   const anyone = members.size > 0;
-  g.fillStyle = `rgba(6,3,14,${!anyone ? .42 : energy < .05 ? .3 : .18})`; g.fillRect(0, 0, W, 322);
+  g.fillStyle = `rgba(${theme.overlay},${!anyone ? .42 : energy < .05 ? .3 : .18})`; g.fillRect(0, 0, W, 322);
   const flick = Math.sin(t * 13.7) > .97 || (Math.sin(t * .37) > .985 && Math.sin(t * 40) > 0);
   g.globalAlpha = flick ? .45 : 1; g.drawImage(sign, (W - sign.width) / 2, 22); g.globalAlpha = 1;
   for (const p of particles) {
@@ -1123,7 +1134,7 @@ function render(tm) {
   drawCrowd(t);
 
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#07050d'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = theme.pageBg; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.drawImage(low, 0, 0, W, H, view.ox, view.oy, W * view.s, H * view.s);
   drawLabels();
   document.getElementById('empty').classList.toggle('hide', anyone);
