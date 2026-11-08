@@ -7,6 +7,7 @@ LABEL org.opencontainers.image.title="Nirva Stage" \
 
 ENV NODE_ENV=production \
     NIRVA_HOST=0.0.0.0 \
+    NIRVA_IN_DOCKER=1 \
     NIRVA_PORT=4321
 
 WORKDIR /app

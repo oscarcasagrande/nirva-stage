@@ -1,0 +1,3 @@
+{"type":"user","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","isSidechain":true,"message":{"role":"user","content":[{"type":"text","text":"SEGREDO-PROMPT-123 detalhado"}]}}
+{"type":"assistant","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","isSidechain":true,"message":{"role":"assistant","content":[{"type":"tool_use","id":"tu-grep","name":"Grep","input":{"pattern":"senha-secreta"}}]}}
+{"type":"user","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","isSidechain":true,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu-grep","content":"config.js: senha-secreta=CONTEUDO-SECRETO-456"}]}}

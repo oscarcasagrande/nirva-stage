@@ -108,6 +108,79 @@ Isso remove só as entradas do Nirva Stage e mantém seus outros hooks. Os backu
 
 ---
 
+## 🌐 Palco remoto (v1.2)
+
+Um palco só para os agentes de várias máquinas: o PC de casa, o notebook, a estação do trabalho, um servidor. Cada sessão aparece como `projeto @máquina` quando há mais de uma máquina no palco.
+
+> **⚠️ Aviso de governança (máquinas corporativas):** no envio remoto, nomes de projetos e de arquivos saem da máquina de origem e vão para o seu palco. Antes de ligar o relay ou os hooks remotos numa máquina da empresa, peça aprovação a quem cuida da política de segurança. O relay nunca é ligado por padrão: ele só roda quando você executa `npm run relay`.
+
+### 1. Proteja o palco com um token
+
+```bash
+npm run -s token                      # gera um token aleatório (32 caracteres)
+export NIRVA_TOKEN=<token>            # PowerShell: $env:NIRVA_TOKEN = "<token>"
+npm start
+```
+
+Com `NIRVA_TOKEN` definido, nada entra nem sai sem o token: enviar eventos, abrir a página e baixar arquivos. Ao abrir o palco, o navegador mostra uma página de login; digite o token uma vez e ele fica num cookie `HttpOnly` por 30 dias (a URL não guarda o token). Sem `NIRVA_TOKEN`, tudo funciona como na v1.1.
+
+No Docker, use o compose remoto, que se recusa a subir sem token e mantém a porta só em `127.0.0.1`:
+
+```bash
+export NIRVA_TOKEN=<token>
+docker compose -f docker-compose.remote.yml up -d
+```
+
+O palco se recusa a iniciar exposto na rede (`NIRVA_HOST` fora de `127.0.0.1`) sem token. Exceções explícitas: `NIRVA_IN_DOCKER=1` (já vem na imagem: dentro do contêiner o palco escuta em `0.0.0.0`, mas a porta é publicada só em `127.0.0.1`) e `NIRVA_INSECURE=1` (expõe sem token por sua conta e risco, com aviso ao iniciar; não recomendado).
+
+### 2. Leve o palco para fora com um túnel (sem abrir porta no roteador)
+
+- **Tailscale Serve** (rede privada, recomendado): `tailscale serve --bg 4321` e abra `https://<sua-maquina>.<tailnet>.ts.net` nas outras máquinas da sua tailnet.
+- **Cloudflare Tunnel**: `cloudflared tunnel --url http://localhost:4321` (ou um túnel nomeado com o seu domínio).
+
+Os dois chegam ao palco como `127.0.0.1`, por isso o token vale também para requisições locais. O limite de 300 POSTs a cada 10 s é por IP; atrás do túnel, todas as máquinas dividem o mesmo limite (folgado para poucas máquinas).
+
+### 3. Envie os eventos de cada máquina
+
+**Hooks permitidos, com Node (recomendado):** hook de comando apontando para o palco remoto.
+
+```bash
+node install-hooks.js --url https://<palco>/event --token <token>
+```
+
+**Hooks permitidos, sem Node:** hook HTTP do próprio Claude Code.
+
+```bash
+node install-hooks.js --http --url https://<palco>/event --token <token>
+```
+
+> O hook HTTP do Claude Code envia o payload completo do evento ao palco (o palco resume e descarta o resto na hora). Se o conteúdo não pode sair da máquina, prefira o hook de comando ou o relay, que resumem na origem. Se o palco recusar o envio (`401` token errado, `429` excesso de eventos), o Claude Code pode mostrar um aviso na sessão; ele nunca bloqueia a ação.
+
+O token fica gravado no `settings.json` do Claude Code e aparece mascarado na saída do instalador. Se vazar, gere outro com `npm run token`.
+
+**Hooks bloqueados (managed hooks only):** o relay lê os transcripts locais e envia só o resumo.
+
+```bash
+npm run relay -- --url https://<palco>/event --token <token> [--dir ~/.claude/projects] [--host nome-da-maquina]
+```
+
+Com o palco fora do ar, o relay guarda até 1.000 eventos e tenta de novo a cada 2 s; se o palco recusar o token, ele mostra "O palco recusou o token (401)" e para. Em Docker (servidor, VM de build), com os transcripts montados como somente leitura:
+
+```bash
+docker run --rm --no-healthcheck -e NIRVA_TOKEN \
+  -v "$HOME/.claude/projects:/transcripts:ro" \
+  ghcr.io/oscarcasagrande/nirva-stage:1.2.0 \
+  node scripts/relay.js --dir /transcripts --url https://<palco>/event --host "$(hostname)"
+```
+
+### O que sai da máquina no envio remoto
+
+Só o resumo: nome da ferramenta, nome do arquivo sem o caminho, primeira palavra do comando, host da URL, tipo do subagente, projeto e máquina. Padrões de busca, consultas, descrições de comandos, textos de notificação, prompts, conteúdo de arquivos e saídas **não** saem (no hook de comando e no relay, o resumo é feito na própria máquina).
+
+Diagnóstico com token: `NIRVA_TOKEN=<token> npm run doctor`.
+
+---
+
 ## 🎼 O que cada coisa significa
 
 | No palco | Evento do Claude Code |
@@ -147,7 +220,8 @@ O LED fica verde rodando, amarelo com healthcheck iniciando, vermelho com `unhea
 
 ## 🔒 Segurança e privacidade
 
-- O palco escuta só em `127.0.0.1` (no Docker, a porta é publicada só em `127.0.0.1` do host) e recusa POSTs vindos de outras origens no navegador.
+- O palco escuta só em `127.0.0.1` (no Docker, a porta é publicada só em `127.0.0.1` do host) e recusa (`401`) POSTs vindos de outras origens no navegador.
+- Para usar de outras máquinas, ligue o token (`NIRVA_TOKEN`) e use um túnel: veja [Palco remoto](#-palco-remoto-v12). O token é comparado em tempo constante e nunca aparece no log.
 - O palco só guarda e mostra um **resumo** do evento: nome do arquivo (sem o caminho), primeira palavra do comando (ou a descrição dele), host da URL e nome da ferramenta.
   No modo HTTP, o resumo é feito no servidor, assim que o evento chega, e o resto é descartado na hora.
 - O `/event` sempre responde `200`, então o palco nunca bloqueia uma ação do Claude Code.
@@ -163,6 +237,10 @@ O LED fica verde rodando, amarelo com healthcheck iniciando, vermelho com `unhea
 | `DOCKER_SOCK` | `/var/run/docker.sock` | socket do Docker no modo container |
 | `NIRVA_TRANSCRIPTS` | desligado | `1` liga o modo transcript em `~/.claude/projects`; também aceita outro caminho |
 | `NIRVA_DEBUG` | desligado | `1` mostra no log os tipos de linha lidos dos transcripts |
+| `NIRVA_TOKEN` | vazio | liga a autenticação por token (v1.2) |
+| `NIRVA_URL` | `http://127.0.0.1:4321/event` | destino do `hook.js` e do relay |
+| `NIRVA_IN_DOCKER` | `1` na imagem Docker | permite escutar em `0.0.0.0` sem token dentro do contêiner |
+| `NIRVA_INSECURE` | vazio | `1` permite expor o palco na rede sem token (não recomendado) |
 
 O visual fica em `public/index.html`:
 
@@ -175,6 +253,19 @@ O visual fica em `public/index.html`:
 
 - Funciona com o Claude Code rodando **na sua máquina**: no terminal ou em sessões locais do app. Sessões na nuvem não alcançam o seu `localhost`.
 - Quando o evento de ferramenta não traz `agent_id`, a ação aparece no vocalista em vez de no subagente.
+
+## 📝 Changelog
+
+### 1.2.0: Palco remoto
+
+- Autenticação por token (`NIRVA_TOKEN`): cabeçalho `Authorization: Bearer`, `?token=` ou cookie; página de login; `npm run token`.
+- O palco se recusa a subir exposto na rede sem token (exceções: `NIRVA_IN_DOCKER=1`, `NIRVA_INSECURE=1`).
+- Limite de 300 POSTs por IP a cada 10 s (com token).
+- Recusa por `Origin` estranho agora responde `401` (antes `403`).
+- Hooks remotos: `hook.js` e `install-hooks.js` com `--url` e `--token`, HTTPS e nome da máquina (`host`).
+- Relay (`npm run relay`) para máquinas com hooks bloqueados, também em Docker.
+- Rótulos `projeto @máquina` quando há mais de uma máquina no palco.
+- `docker-compose.remote.yml` e `npm run doctor` com token.
 
 ---
 

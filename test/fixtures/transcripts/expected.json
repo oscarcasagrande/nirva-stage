@@ -1,0 +1,18 @@
+{
+  "nota": "T09. O teste copia seed.jsonl para <tmp>/projeto-fx/fx-sessao.jsonl antes de ligar o relay, depois anexa main-a.jsonl, cria <tmp>/projeto-fx/fx-sessao/subagents/agent-fx1.jsonl e por fim anexa main-b.jsonl. Os segredos (SEGREDO-PROMPT-123, CONTEUDO-SECRETO-456, XYZ, senha-secreta, /home/fx/secret, 'procura o segredo') não podem aparecer no palco.",
+  "events": [
+    { "event": "SessionStart" },
+    { "event": "UserPromptSubmit" },
+    { "event": "PreToolUse", "tool": "Read", "detail": "notas.md" },
+    { "event": "PostToolUse", "tool": "Read" },
+    { "event": "PreToolUse", "tool": "Task", "detail": "Explore" },
+    { "event": "SubagentStart", "agentType": "Explore" },
+    { "event": "PreToolUse", "tool": "Grep", "agentType": "Explore", "detail": "" },
+    { "event": "PostToolUse", "tool": "Grep", "agentType": "Explore" },
+    { "event": "PostToolUse", "tool": "Task" },
+    { "event": "SubagentStop", "agentType": "Explore" },
+    { "event": "PreToolUse", "tool": "Bash", "detail": "deploy" },
+    { "event": "PostToolUseFailure", "tool": "Bash" },
+    { "event": "Stop" }
+  ]
+}

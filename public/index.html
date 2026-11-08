@@ -393,12 +393,24 @@ function getSession(ev) {
   if (!s) {
     const used = new Set([...sessions.values()].map((x) => x.color));
     const color = SESSION_COLORS.find((c) => !used.has(c)) || SESSION_COLORS[sessionSeq % SESSION_COLORS.length];
-    s = { id: ev.session, order: sessionSeq++, project: ev.project || '', color, lastAt: ev.ts, status: 'working', ended: false, endedAt: 0 };
+    s = { id: ev.session, order: sessionSeq++, project: ev.project || '', host: ev.host || '', color, lastAt: ev.ts, status: 'working', ended: false, endedAt: 0 };
     sessions.set(ev.session, s);
   }
   if (!s.project && ev.project) s.project = ev.project;
+  if (!s.host && ev.host) s.host = ev.host;
   return s;
 }
+// <projName>
+// Nome da sessão nos rótulos: com sessões de mais de uma máquina no palco,
+// "projeto @máquina"; com uma só, igual à v1.1. Sessão sem host conta como uma máquina.
+function projName(s, all, fallback) {
+  const name = s.project || fallback || 'Claude';
+  if (!s.host) return name;
+  const hosts = new Set();
+  for (const x of all.values()) if (!x.ended) hosts.add(x.host || '');
+  return hosts.size > 1 ? name + ' @' + s.host : name;
+}
+// </projName>
 const stationOf = (id) => STATIONS.find((s) => s.id === id);
 const keyOf = (sid, id) => sid + '|' + id;
 const membersOf = (sid) => [...members.values()].filter((m) => m.sid === sid);
@@ -593,7 +605,7 @@ function renderChips() {
   const el = document.getElementById('chips');
   const t = now();
   const data = [...sessions.values()].filter((s) => !s.ended).sort((a, b) => a.order - b.order).map((s) => ({
-    id: s.id, name: s.project || 'sessão', color: s.color, st: t - s.lastAt > SLEEP_MS ? 'sleep' : s.status,
+    id: s.id, name: projName(s, sessions, 'sessão'), color: s.color, st: t - s.lastAt > SLEEP_MS ? 'sleep' : s.status,
     n: membersOf(s.id).filter((m) => m.role === 'sub').length, hl: highlight === s.id,
   }));
   const dk = docker.available ? docker.list.length : -1;
@@ -638,7 +650,7 @@ function describe(ev) {
 function pushLog(ev, s, m) {
   if (ev.event === 'PostToolUse') return;
   const sub = m && m.role === 'sub' && ev.event !== 'SubagentStart' && ev.event !== 'SubagentStop';
-  logRows.push({ t: new Date(ev.ts || now()).toTimeString().slice(0, 8), who: sub ? m.label : (s.project || 'Claude'), color: s.color, what: describe(ev) });
+  logRows.push({ t: new Date(ev.ts || now()).toTimeString().slice(0, 8), who: sub ? m.label : projName(s, sessions), color: s.color, what: describe(ev) });
   while (logRows.length > 60) logRows.shift();
   logDirty = true;
 }
@@ -1118,7 +1130,7 @@ function drawLabels() {
     ctx.globalAlpha = highlight && m.sid !== highlight ? .25 : 1;
     const sx = view.ox + m.scr.x * view.s, sy = view.oy + m.scr.y * view.s;
     const A = ACT[m.scr.act] || ACT.idle;
-    let name = m.role === 'leader' ? '🎤 ' + (s.project || 'Claude') : m.label;
+    let name = m.role === 'leader' ? '🎤 ' + projName(s, sessions) : m.label;
     if (name.length > 22) name = name.slice(0, 21) + '…';
     let what = A.verb;
     if (m.detail && m.detail !== what && !['sleep', 'yourturn', 'done', 'idle', 'sing'].includes(m.scr.act)) what += (what ? ' · ' : '') + m.detail;
@@ -1160,7 +1172,7 @@ function powerChord() {
 function alertUser(s, text) {
   chime();
   if (notifyOn && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-    try { new Notification('Nirva Stage: ' + (s.project || 'Claude'), { body: text, tag: 'nirva-' + s.id }); } catch { }
+    try { new Notification('Nirva Stage: ' + projName(s, sessions), { body: text, tag: 'nirva-' + s.id }); } catch { }
   }
 }
 

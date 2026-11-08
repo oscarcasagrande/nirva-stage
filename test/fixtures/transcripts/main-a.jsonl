@@ -1,0 +1,4 @@
+{"type":"user","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","message":{"role":"user","content":"SEGREDO-PROMPT-123: revise o deploy"}}
+{"type":"assistant","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu-read","name":"Read","input":{"file_path":"/home/fx/secret/notas.md"}}]}}
+{"type":"user","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu-read","content":"CONTEUDO-SECRETO-456"}]}}
+{"type":"assistant","cwd":"/home/fx/projeto-fx","sessionId":"fx-sessao","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu-task","name":"Task","input":{"subagent_type":"Explore","description":"procura o segredo","prompt":"SEGREDO-PROMPT-123 detalhado"}}]}}

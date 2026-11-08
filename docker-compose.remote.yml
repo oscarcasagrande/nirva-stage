@@ -1,0 +1,26 @@
+# Nirva Stage: palco remoto (v1.2), protegido por token.
+#
+#   export NIRVA_TOKEN=$(npm run -s token)      # PowerShell: $env:NIRVA_TOKEN = (npm run -s token)
+#   docker compose -f docker-compose.remote.yml up -d
+#
+# Sem NIRVA_TOKEN este arquivo se recusa a subir. A porta continua publicada só
+# no 127.0.0.1 da máquina: o acesso de outras máquinas passa por um túnel HTTPS
+# (Tailscale Serve ou Cloudflare Tunnel), nunca por porta aberta no roteador.
+services:
+  nirva-stage:
+    image: ghcr.io/oscarcasagrande/nirva-stage:latest
+    container_name: nirva-stage-remoto
+    restart: unless-stopped
+    ports:
+      # só no 127.0.0.1 da sua máquina: o túnel é quem leva o palco para fora
+      - "127.0.0.1:4321:4321"
+    # --- Containers na parede (opcional) ------------------------------
+    # Acesso de LEITURA à lista de containers. Quem acessa o socket do Docker
+    # tem, na prática, poder de admin no Docker. Para desligar, apague as 3
+    # linhas abaixo e troque NIRVA_DOCKER para "0".
+    user: "0:0"   # necessário para ler o socket no Docker Desktop
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      NIRVA_TOKEN: ${NIRVA_TOKEN:?defina NIRVA_TOKEN (npm run token)}
+      NIRVA_DOCKER: "1"
