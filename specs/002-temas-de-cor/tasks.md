@@ -92,8 +92,8 @@ são sequenciais; [P] só entre arquivos diferentes.
 - [X] T023 [P] Legenda (`H`) em `public/index.html`: incluir `<kbd>C</kbd> tema` e o menu 🎨 nos atalhos; teste em `test/themes.test.js` (legenda contém `<kbd>C</kbd>` e 🎨)
 - [X] T024 [P] `README.md`: seção do palco e atalhos com a tecla `C`, o menu 🎨, os 6 temas e `?theme=<id>`; changelog 1.3.0; teste em `test/themes.test.js` (README cita `C`, 🎨, `?theme=` e os 6 nomes)
 - [X] T025 Rodar o e2e completo, que gera `docs/temas/<id>.png` dos 6 temas; conferir visualmente; comparar `neon` com o screenshot `?demo` da v1.2
-- [ ] T026 Rodar a bateria completa: `npm test`, e2e T01–T10, e com o servidor ligado `npm run doctor` e `npm run test-event`
-- [ ] T027 Commits pequenos ao longo das fases, na branch atual, sem push nem merge
+- [X] T026 Rodar a bateria completa: `npm test`, e2e T01–T10, e com o servidor ligado `npm run doctor` e `npm run test-event`
+- [X] T027 Commits pequenos ao longo das fases, na branch atual, sem push nem merge
 
 ## Dependencies & Execution Order
 
