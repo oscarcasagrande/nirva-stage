@@ -5,6 +5,10 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+// Cópia com a data de agora: no Windows, copyFileSync preserva a data de modificação, e o
+// lib/transcripts.js só anuncia sessões mexidas nos últimos 15 min (o teste falharia 15 min
+// depois de as fixtures serem gravadas).
+const copyFresh = (from, to) => fs.writeFileSync(to, fs.readFileSync(from));
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -44,7 +48,7 @@ before(async () => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nirva-relay-'));
   fs.mkdirSync(path.join(tmp, 'projeto-fx'));
   main = path.join(tmp, 'projeto-fx', 'fx-sessao.jsonl');
-  fs.copyFileSync(path.join(FX, 'seed.jsonl'), main);
+  copyFresh(path.join(FX, 'seed.jsonl'), main);
   relay = await startRelay(['--url', srv.base + '/event', '--token', TOKEN, '--dir', tmp, '--host', 'maq-relay']);
 });
 after(async () => {
@@ -59,7 +63,7 @@ test('T09: os 13 eventos chegam em ordem, com host e tipo de subagente', async (
   await waitEvents(5);
   const sub = path.join(tmp, 'projeto-fx', 'fx-sessao', 'subagents');
   fs.mkdirSync(sub, { recursive: true });
-  fs.copyFileSync(path.join(FX, 'agent-fx1.jsonl'), path.join(sub, 'agent-fx1.jsonl'));
+  copyFresh(path.join(FX, 'agent-fx1.jsonl'), path.join(sub, 'agent-fx1.jsonl'));
   await waitEvents(8);
   fs.appendFileSync(main, fs.readFileSync(path.join(FX, 'main-b.jsonl')));
   await waitEvents(13);

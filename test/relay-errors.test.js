@@ -4,6 +4,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+// Cópia com a data de agora: no Windows, copyFileSync preserva a data de modificação, e o
+// lib/transcripts.js só anuncia sessões mexidas nos últimos 15 min (o teste falharia 15 min
+// depois de as fixtures serem gravadas).
+const copyFresh = (from, to) => fs.writeFileSync(to, fs.readFileSync(from));
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -16,7 +20,7 @@ function tmpDir(seed = true) {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'nirva-relay-err-'));
   if (seed) {
     fs.mkdirSync(path.join(d, 'projeto-fx'));
-    fs.copyFileSync(path.join(FX, 'seed.jsonl'), path.join(d, 'projeto-fx', 'fx-sessao.jsonl'));
+    copyFresh(path.join(FX, 'seed.jsonl'), path.join(d, 'projeto-fx', 'fx-sessao.jsonl'));
   }
   return d;
 }
