@@ -14,19 +14,65 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # o package.json promete Node 18+; 22 é a referência (e a da imagem)
+        node-version: [18, 22]
+    name: check (Node ${{ matrix.node-version }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
       - name: Sintaxe
         run: |
-          node --check server.js && node --check hook.js && node --check install-hooks.js && node --check lib/normalize.js
+          for f in server.js hook.js install-hooks.js lib/normalize.js lib/transcripts.js \
+                   scripts/relay.js scripts/token.js scripts/doctor.js; do
+            node --check "$f" || exit 1
+          done
+      - name: Testes
+        run: npm test
       - name: Teste de fumaça (servidor + hook)
         run: |
           node server.js & sleep 1
           echo '{"hook_event_name":"SessionStart","session_id":"ci","cwd":"/tmp/ci"}' | node hook.js
           curl -sf http://127.0.0.1:4321/health | grep '"events":1'
+
+  # RF13: o relay roda em Docker lendo os transcripts montados como somente leitura
+  relay-docker:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Relay em Docker (transcripts montados :ro)
+        run: |
+          docker build -t nirva-stage:ci .
+          NIRVA_TOKEN=ci-token node server.js > palco.log 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://127.0.0.1:4321/health > /dev/null && break; sleep 0.5; done
+          mkdir -p /tmp/tr/projeto-ci
+          cp test/fixtures/transcripts/seed.jsonl /tmp/tr/projeto-ci/ci-sessao.jsonl
+          chmod -R a+rwX /tmp/tr
+          docker run -d --name relay --no-healthcheck --network host \
+            -e NIRVA_TOKEN=ci-token \
+            -v /tmp/tr:/transcripts:ro \
+            nirva-stage:ci node scripts/relay.js --dir /transcripts --url http://127.0.0.1:4321/event --host ci-docker
+          sleep 3
+          cat test/fixtures/transcripts/main-a.jsonl >> /tmp/tr/projeto-ci/ci-sessao.jsonl
+          ok=0
+          for i in $(seq 1 20); do
+            n=$(curl -sf -H "Authorization: Bearer ci-token" http://127.0.0.1:4321/health | sed -E 's/.*"events":([0-9]+).*/\1/')
+            echo "eventos no palco: ${n:-0}"
+            if [ "${n:-0}" -ge 5 ]; then ok=1; break; fi
+            sleep 1
+          done
+          echo "--- relay"; docker logs relay
+          echo "--- palco"; cat palco.log
+          docker rm -f relay > /dev/null
+          [ "$ok" = 1 ]
 
   docker:
     needs: check

@@ -5,6 +5,7 @@
 //
 //   npm run doctor            checagens rápidas (não usa o Claude)
 //   npm run doctor -- --claude    também roda "claude -p" de verdade e confere se os eventos chegam
+//   NIRVA_TOKEN=<token> npm run doctor   para um palco protegido por token (v1.2)
 //
 // Sem dependências. Funciona no Windows, macOS e Linux.
 
@@ -17,20 +18,23 @@ const { spawn } = require('child_process');
 const PORT = Number(process.env.NIRVA_PORT) || 4321;
 const RUN_CLAUDE = process.argv.includes('--claude');
 const MARK = 'nirva-stage';
+const TOKEN = process.env.NIRVA_TOKEN || '';
+// nunca mostra o token: nem o do ambiente, nem o gravado nos hooks
+const mask = (t) => { let out = String(t).replace(/(token=)[^&\s"]+/gi, '$1****').replace(/(--token\s+)("[^"]*"|\S+)/g, '$1****'); if (TOKEN) out = out.split(TOKEN).join('****'); return out; };
 let problems = 0, warnings = 0;
 
-const ok = (m) => console.log('  ✅ ' + m);
-const warn = (m) => { warnings++; console.log('  ⚠️  ' + m); };
+const ok = (m) => console.log('  ✅ ' + mask(m));
+const warn = (m) => { warnings++; console.log('  ⚠️  ' + mask(m)); };
 let soft = false; // no modo transcript, problemas de hook viram só informação
-const bad = (m) => { if (soft) return console.log('  ·  ' + m + '  (sem efeito no modo transcript)'); problems++; console.log('  ❌ ' + m); };
-const info = (m) => console.log('     ' + m);
+const bad = (m) => { m = mask(m); if (soft) return console.log('  ·  ' + m + '  (sem efeito no modo transcript)'); problems++; console.log('  ❌ ' + m); };
+const info = (m) => console.log('     ' + mask(m));
 const title = (m) => console.log('\n' + m);
 
 function request(method, url, body, timeout = 3000) {
   return new Promise((resolve) => {
     let u; try { u = new URL(url); } catch { return resolve({ error: 'URL inválida' }); }
     const req = http.request({ host: u.hostname, port: u.port || 80, path: u.pathname + u.search, method, timeout,
-      headers: body ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } : {} }, (res) => {
+      headers: { ...(body ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } : {}), ...(TOKEN ? { authorization: 'Bearer ' + TOKEN } : {}) } }, (res) => {
       let b = ''; res.setEncoding('utf8'); res.on('data', (c) => { b += c; }); res.on('end', () => resolve({ status: res.statusCode, body: b }));
     });
     req.on('timeout', () => { req.destroy(); resolve({ error: 'tempo esgotado' }); });
@@ -61,8 +65,20 @@ function ourHooks(settings) {
 
   // 1. Palco
   title('1. Palco (servidor)');
-  const h0 = await health();
-  if (!h0) {
+  let h0 = await health();
+  // v1.2: palco com token responde só {ok, auth:"required"} a quem não tem o token certo
+  let locked = false;
+  if (h0 && h0.auth === 'required') {
+    if (!('events' in h0)) {
+      locked = true;
+      if (!TOKEN) bad('O palco exige token. Defina NIRVA_TOKEN com o token do palco e rode de novo (ex.: NIRVA_TOKEN=<token> npm run doctor).');
+      else bad('O palco exige token e recusou o NIRVA_TOKEN informado. Confira se é o mesmo token do palco.');
+    } else ok('Autenticação ligada: o NIRVA_TOKEN foi aceito.');
+  }
+  if (locked) {
+    info(`O palco responde em http://localhost:${PORT}, mas sem o token certo não dá para ver os detalhes.`);
+    h0 = null;
+  } else if (!h0) {
     bad(`Nada respondendo em http://localhost:${PORT}. Suba o palco: "npm start" ou "docker compose up -d".`);
   } else {
     ok(`Palco no ar em http://localhost:${PORT}: ${h0.events} eventos recebidos, ${h0.clients} navegador(es) aberto(s), Docker ${h0.docker ? 'ok' : 'não lido'}.`);
@@ -130,7 +146,8 @@ function ourHooks(settings) {
   // 4. Teste do caminho hook -> palco (sem Claude)
   soft = false;
   title('4. Teste: hook → palco (evento simulado)');
-  if (!h0) info('Pulado: o palco não está no ar.');
+  if (locked) info('Pulado: o palco exige token.');
+  else if (!h0) info('Pulado: o palco não está no ar.');
   else if (h0.mode === 'transcripts') {
     const r = await request('POST', `http://127.0.0.1:${PORT}/event`, JSON.stringify({ hook_event_name: 'SessionStart', session_id: 'doctor-' + Date.now(), cwd: path.join(os.tmpdir(), 'nirva-doctor') }));
     await sleep(300); const h1 = await health();
@@ -161,7 +178,8 @@ function ourHooks(settings) {
 
   // 5. Teste real com o Claude Code
   title('5. Teste real com o Claude Code' + (RUN_CLAUDE ? '' : ' (pulado; use: npm run doctor -- --claude)'));
-  if (RUN_CLAUDE) {
+  if (RUN_CLAUDE && locked) info('Pulado: o palco exige token.');
+  else if (RUN_CLAUDE) {
     const before = await health();
     info('Rodando: claude -p "Responda apenas: ok" --debug   (usa um pouquinho da sua cota)');
     const out = await new Promise((resolve) => {

@@ -58,6 +58,15 @@
   #help .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
   #help kbd{background:rgba(255,255,255,.1);border-radius:4px;padding:0 5px}
   #ctrl button.hide{display:none}
+  #themeMenu{position:fixed;top:56px;right:12px;z-index:6;padding:6px;width:300px;max-width:calc(100vw - 16px)}
+  #themeMenu.hide,#themeToast.hide{display:none}
+  #themeMenu button{all:unset;box-sizing:border-box;display:flex;gap:10px;align-items:center;width:100%;padding:6px 8px;border-radius:7px;cursor:pointer}
+  #themeMenu button:hover,#themeMenu button:focus-visible{background:rgba(255,255,255,.08)}
+  #themeMenu button:focus-visible{box-shadow:0 0 0 1px var(--cyan)}
+  #themeMenu canvas{width:64px;height:36px;image-rendering:pixelated;border-radius:4px;flex:none;border:1px solid var(--line)}
+  #themeMenu .nm{display:block;font-weight:600} #themeMenu small{color:var(--dim);font-size:11px}
+  #themeMenu .ck{margin-left:auto;width:14px;flex:none;color:var(--green)}
+  #themeToast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:6px 12px;z-index:6;font-size:12px;pointer-events:none}
   #ctrl button.donate{background:linear-gradient(135deg,rgba(255,79,163,.25),rgba(62,242,255,.2))}
   #donate{position:fixed;inset:0;z-index:7;display:grid;place-items:center;background:rgba(4,2,10,.6)}
   #donate.hide{display:none}
@@ -80,6 +89,7 @@
 <div id="brand" class="panel"><b>NIRVA STAGE</b><span id="conn"><i></i><span>conectando…</span></span></div>
 <div id="chips"></div>
 <div id="ctrl" class="panel">
+  <button id="bTheme" title="Tema do palco (C)" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu">🎨</button>
   <button id="bSound" title="Som (S)">🔇</button>
   <button id="bNotify" title="Notificações do navegador quando o Claude espera você (N)">🔕</button>
   <button id="bLog" title="Registro de eventos (L)" class="on">📜</button>
@@ -109,6 +119,8 @@
 <div id="empty" class="panel"><b>Palco vazio</b><br><span>Abra o Claude Code num terminal: a banda sobe ao palco no primeiro evento. 🎸</span></div>
 <div id="demoBanner" class="panel hide"><b>MODO DEMO</b><span id="demoWhy">eventos simulados</span><button id="demoStop">parar</button></div>
 <div id="tip" class="panel hide"></div>
+<div id="themeMenu" class="panel hide" role="menu" aria-label="Tema do palco"></div>
+<div id="themeToast" class="panel hide" role="status" aria-live="polite"></div>
 <div id="help" class="panel hide">
   <h3>Legenda do palco</h3>
   <table>
@@ -124,7 +136,7 @@
     <tr><td><span class="sw" style="background:#3ef2ff"></span>sua vez</td><td>fim do turno: reverência, confete e a plateia pulando</td></tr>
     <tr><td>💤</td><td>5 min sem eventos: o músico cochila</td></tr>
   </table>
-  <p style="color:var(--dim);margin:10px 0 0">Atalhos: <kbd>S</kbd> som · <kbd>N</kbd> notificações · <kbd>L</kbd> registro · <kbd>D</kbd> demo · <kbd>F</kbd> tela cheia · <kbd>H</kbd> legenda · clique num projeto no topo para destacá-lo</p>
+  <p style="color:var(--dim);margin:10px 0 0">Atalhos: <kbd>S</kbd> som · <kbd>N</kbd> notificações · <kbd>L</kbd> registro · <kbd>D</kbd> demo · <kbd>C</kbd> tema (ou o menu 🎨) · <kbd>F</kbd> tela cheia · <kbd>H</kbd> legenda · clique num projeto no topo para destacá-lo</p>
 </div>
 
 <script src="vendor/qrcode.js"></script>
@@ -278,6 +290,24 @@ const NOTE = ['00110','00101','00100','00100','11100','11100'];
 function bitmap(rows, x, y, c, s = 1) { G.fillStyle = c; for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) if (rows[j][i] === '1') G.fillRect(Math.round(x + i * s), Math.round(y + j * s), s, s); }
 
 // ======================================================================
+//  Temas de cor do cenário (v1.3). Cópia fiel de docs/temas-de-cor.json,
+//  que é a fonte da verdade: test/themes.test.js compara os dois.
+// ======================================================================
+// <themes>
+const THEME_DEFAULT = "neon";
+const THEMES = [
+  {id: "neon", name: "Neon noturno", tagline: "Roxo com neon rosa e ciano", pageBg: "#07050d", wallBase: "#120d20", foamA: "#221a38", foamB: "#1d1631", foamHiA: "#2b2247", foamHiB: "#251c3e", foamLine: "#140f22", sideWall: "#161026", brick: "#120c1f", shelf: "#2a2233", baseboard: "#0c0816", floorA: "#3a2a24", floorB: "#35261f", floorLine: "#2a1d18", riserTop: "#2b2233", riserLine: "#241c2b", riserFace: "#1b1422", riserEdge: "#3a2f44", stageEdge: "#1b1318", stageEdgeHi: "#5a4038", pit: "#0a0712", truss: "#3a3848", trussZig: "#2c2a38", cable: "#151019", signBg: "#1b1430", signA: "#ff4fa3", signB: "#3ef2ff", washA: "255,79,163", washB: "62,242,255", ledRiserOn: "#ff4fa3", ledRiserOff: "#4a2038", ledEdgeOn: "#3ef2ff", ledEdgeOff: "#1b3c44", crowd: ["#0e0b18","#120e1f","#0b0914","#151127"], crowdRim: "#3a2f5a", overlay: "6,3,14"},
+  {id: "synthwave", name: "Synthwave", tagline: "Laranja, magenta e chão quadriculado", pageBg: "#0a0310", wallBase: "#1a0826", foamA: "#3b1450", foamB: "#2a0f3a", foamHiA: "#4c1b66", foamHiB: "#36134a", foamLine: "#1e0a2a", sideWall: "#220b30", brick: "#170722", shelf: "#3a1a4a", baseboard: "#12051c", floorA: "#1c0f2e", floorB: "#1c0f2e", floorLine: "#6a2a6e", riserTop: "#2a1240", riserLine: "#3d1857", riserFace: "#160828", riserEdge: "#ff3f8e", stageEdge: "#160828", stageEdgeHi: "#ff8a3d", pit: "#0d0416", truss: "#4a2a5c", trussZig: "#33193f", cable: "#12061e", signBg: "#24093a", signA: "#ff8a3d", signB: "#ff3f8e", washA: "255,138,61", washB: "255,63,142", ledRiserOn: "#ffd23f", ledRiserOff: "#4a3a10", ledEdgeOn: "#ff3f8e", ledEdgeOff: "#3d1030", crowd: ["#14061f","#1a0828","#100418","#200a30"], crowdRim: "#5a2a5c", overlay: "10,3,20", floorGrid: true},
+  {id: "grunge", name: "Garagem grunge", tagline: "Concreto, âmbar quente e ferrugem", pageBg: "#0b0a09", wallBase: "#1a1816", foamA: "#3a3530", foamB: "#2c2824", foamHiA: "#45403a", foamHiB: "#35302b", foamLine: "#1f1c19", sideWall: "#2a2420", brick: "#1e1a17", shelf: "#4a4038", baseboard: "#141210", floorA: "#4a3b2a", floorB: "#3f3223", floorLine: "#2e2418", riserTop: "#3a332c", riserLine: "#2e2822", riserFace: "#24201c", riserEdge: "#5a4c3e", stageEdge: "#221c16", stageEdgeHi: "#7a5a3a", pit: "#0e0c0a", truss: "#4a4642", trussZig: "#36332f", cable: "#151210", signBg: "#201c18", signA: "#ffb547", signB: "#c8553d", washA: "255,181,71", washB: "200,85,61", ledRiserOn: "#ffe08a", ledRiserOff: "#4a4020", ledEdgeOn: "#ffb547", ledEdgeOff: "#3a2a14", crowd: ["#151210","#1a1714","#100e0c","#1e1a16"], crowdRim: "#5a4a38", overlay: "12,10,8"},
+  {id: "ice", name: "Arena gelo", tagline: "Azul-marinho, branco e gelo", pageBg: "#050a12", wallBase: "#08111f", foamA: "#13284a", foamB: "#0f1d33", foamHiA: "#1a3560", foamHiB: "#142a48", foamLine: "#0a1424", sideWall: "#0d1a2e", brick: "#091424", shelf: "#22344f", baseboard: "#060d18", floorA: "#222c3d", floorB: "#1a2230", floorLine: "#121a26", riserTop: "#1e2a40", riserLine: "#172236", riserFace: "#111a2a", riserEdge: "#3a5a80", stageEdge: "#0f1726", stageEdgeHi: "#7fa8d0", pit: "#050a14", truss: "#5a6a80", trussZig: "#3a4658", cable: "#0a1220", signBg: "#0c1830", signA: "#7fd3ff", signB: "#ffffff", washA: "127,211,255", washB: "200,230,255", ledRiserOn: "#4da3ff", ledRiserOff: "#12304a", ledEdgeOn: "#e8f4ff", ledEdgeOff: "#1e3348", crowd: ["#0a1220","#0d1628","#081020","#101a30"], crowdRim: "#3a5a80", overlay: "4,8,16"},
+  {id: "hacker", name: "Terminal hacker", tagline: "Preto com verde fósforo", pageBg: "#020503", wallBase: "#030805", foamA: "#0b1f14", foamB: "#07140d", foamHiA: "#0f2a1b", foamHiB: "#0a1c12", foamLine: "#030a06", sideWall: "#06110a", brick: "#030a06", shelf: "#103020", baseboard: "#020604", floorA: "#101a14", floorB: "#0c140f", floorLine: "#0a2a18", riserTop: "#0e2016", riserLine: "#0a1a10", riserFace: "#06120b", riserEdge: "#1e6a40", stageEdge: "#06100a", stageEdgeHi: "#39ff88", pit: "#010402", truss: "#1e3a2a", trussZig: "#14281c", cable: "#04100a", signBg: "#06140c", signA: "#39ff88", signB: "#1de9b6", washA: "57,255,136", washB: "29,233,182", ledRiserOn: "#39ff88", ledRiserOff: "#0c3a20", ledEdgeOn: "#1de9b6", ledEdgeOff: "#0a3028", crowd: ["#040c08","#061009","#030806","#08140c"], crowdRim: "#1e6a40", overlay: "1,6,3"},
+  {id: "jazz", name: "Clube de jazz", tagline: "Vinho, dourado e creme", pageBg: "#0a0406", wallBase: "#16070c", foamA: "#3a1420", foamB: "#2a0e17", foamHiA: "#4a1a2a", foamHiB: "#33111d", foamLine: "#1a080e", sideWall: "#220b12", brick: "#18070d", shelf: "#4a2a20", baseboard: "#10050a", floorA: "#3b2418", floorB: "#33201a", floorLine: "#24150e", riserTop: "#3a2218", riserLine: "#2e1a12", riserFace: "#22120c", riserEdge: "#8a6a30", stageEdge: "#1e0f0a", stageEdgeHi: "#e3b04b", pit: "#0c0507", truss: "#5a4a30", trussZig: "#3e3220", cable: "#140a08", signBg: "#200a10", signA: "#e3b04b", signB: "#f3e2c0", washA: "227,176,75", washB: "160,40,60", ledRiserOn: "#e3b04b", ledRiserOff: "#4a3a14", ledEdgeOn: "#f3e2c0", ledEdgeOff: "#3a2a1a", crowd: ["#120609","#18080c","#0e0507","#1c0a0e"], crowdRim: "#6a3a2a", overlay: "10,3,6"},
+];
+// </themes>
+const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES.find((t) => t.id === THEME_DEFAULT);
+let theme = themeById(THEME_DEFAULT);
+
+// ======================================================================
 //  Cenário (desenhado uma vez)
 // ======================================================================
 function drawAmp(x0, fy) {
@@ -299,19 +329,21 @@ function curve(pts, c) {
   }
 }
 function drawBG() {
+  const T = theme;
   G = bgc;
-  R(0, 0, W, H, '#120d20');
+  bgc.clearRect(0, 0, W, H);
+  R(0, 0, W, H, T.wallBase);
   for (let j = 0; j < 15; j++) for (let i = 0; i < 44; i++) {
     const x = 56 + i * 12, y = 16 + j * 12, odd = (i + j) % 2;
-    R(x, y, 12, 12, odd ? '#221a38' : '#1d1631');
-    const hi = odd ? '#2b2247' : '#251c3e';
+    R(x, y, 12, 12, odd ? T.foamA : T.foamB);
+    const hi = odd ? T.foamHiA : T.foamHiB;
     for (let k = 1; k < 12; k += 3) odd ? R(x + 1, y + k, 10, 1, hi) : R(x + k, y + 1, 1, 10, hi);
-    R(x, y, 12, 1, '#140f22'); R(x, y, 1, 12, '#140f22');
+    R(x, y, 12, 1, T.foamLine); R(x, y, 1, 12, T.foamLine);
   }
   for (const [x0, x1] of [[0, 56], [584, 640]]) {
-    R(x0, 0, x1 - x0, 196, '#161026');
-    for (let y = 0; y < 196; y += 8) for (let x = x0 + ((y / 8) % 2 ? 0 : 6); x < x1; x += 12) R(x, y, 1, 8, '#120c1f');
-    for (let y = 0; y < 196; y += 8) R(x0, y, x1 - x0, 1, '#120c1f');
+    R(x0, 0, x1 - x0, 196, T.sideWall);
+    for (let y = 0; y < 196; y += 8) for (let x = x0 + ((y / 8) % 2 ? 0 : 6); x < x1; x += 12) R(x, y, 1, 8, T.brick);
+    for (let y = 0; y < 196; y += 8) R(x0, y, x1 - x0, 1, T.brick);
   }
   R(8, 40, 40, 54, '#2d1b4e'); R(9, 41, 38, 52, '#3a2563');
   line(30, 46, 20, 64, '#ffe66d', 2); line(20, 64, 30, 64, '#ffe66d', 2); line(30, 64, 22, 84, '#ffe66d', 2);
@@ -320,44 +352,52 @@ function drawBG() {
   circ(612, 64, 13, '#0d0d12'); circ(612, 64, 5, '#ff4fa3'); P(612, 64, '#0d0d12');
   R(596, 84, 30, 2, '#3ef2ff'); R(596, 88, 20, 2, '#3ef2ff');
   // prateleiras dos amplificadores (containers)
-  for (const [x0, x1] of [[58, 228], [412, 582]]) for (const y of [146, 170, 194]) { R(x0, y, x1 - x0, 2, '#2a2233'); R(x0, y + 2, x1 - x0, 1, '#120c1f'); }
-  R(0, 196, W, 4, '#0c0816');
-  for (let r = 0; r < 21; r++) {
-    const y = 200 + r * 6; R(0, y, W, 6, r % 2 ? '#3a2a24' : '#35261f'); R(0, y, W, 1, '#2a1d18');
-    for (let x = (r * 17) % 40; x < W; x += 40) R(x, y, 1, 6, '#2a1d18');
+  for (const [x0, x1] of [[58, 228], [412, 582]]) for (const y of [146, 170, 194]) { R(x0, y, x1 - x0, 2, T.shelf); R(x0, y + 2, x1 - x0, 1, T.brick); }
+  R(0, 196, W, 4, T.baseboard);
+  if (T.floorGrid) {
+    // chão em grade (synthwave): linhas a cada 12 px (horizontais) e 20 px (verticais)
+    R(0, 200, W, 126, T.floorA);
+    for (let y = 200; y < 326; y += 12) R(0, y, W, 1, T.floorLine);
+    for (let x = 0; x < W; x += 20) R(x, 200, 1, 126, T.floorLine);
+  } else for (let r = 0; r < 21; r++) {
+    const y = 200 + r * 6; R(0, y, W, 6, r % 2 ? T.floorA : T.floorB); R(0, y, W, 1, T.floorLine);
+    for (let x = (r * 17) % 40; x < W; x += 40) R(x, y, 1, 6, T.floorLine);
   }
-  R(228, 198, 184, 24, '#2b2233'); for (let k = 0; k < 4; k++) R(228, 198 + k * 6, 184, 1, '#241c2b');
-  R(228, 222, 184, 8, '#1b1422'); R(228, 222, 184, 1, '#3a2f44');
-  R(0, 322, W, 6, '#1b1318'); R(0, 322, W, 1, '#5a4038'); R(0, 328, W, 32, '#0a0712');
+  R(228, 198, 184, 24, T.riserTop); for (let k = 0; k < 4; k++) R(228, 198 + k * 6, 184, 1, T.riserLine);
+  R(228, 222, 184, 8, T.riserFace); R(228, 222, 184, 1, T.riserEdge);
+  R(0, 322, W, 6, T.stageEdge); R(0, 322, W, 1, T.stageEdgeHi); R(0, 328, W, 32, T.pit);
   drawAmp(12, 230); drawAmp(586, 230);
-  R(0, 4, W, 2, '#3a3848'); R(0, 12, W, 2, '#3a3848');
-  for (let x = 0; x < W; x += 8) { line(x, 6, x + 4, 11, '#2c2a38'); line(x + 4, 11, x + 8, 6, '#2c2a38'); }
+  R(0, 4, W, 2, T.truss); R(0, 12, W, 2, T.truss);
+  for (let x = 0; x < W; x += 8) { line(x, 6, x + 4, 11, T.trussZig); line(x + 4, 11, x + 8, 6, T.trussZig); }
   const cans = [...new Set(STATIONS.map((s) => s.x))];
   for (const cx of cans) { R(cx - 1, 13, 2, 2, '#555'); R(cx - 3, 15, 6, 6, '#1a1822'); R(cx - 2, 20, 4, 1, '#55536a'); }
-  curve([[34, 232], [120, 312], [198, 300]], '#151019');
-  curve([[606, 232], [520, 316], [442, 300]], '#151019');
-  curve([[40, 232], [60, 260], [72, 266]], '#151019');
-  curve([[600, 232], [585, 260], [568, 266]], '#151019');
-  curve([[330, 306], [400, 334], [600, 236]], '#151019');
+  curve([[34, 232], [120, 312], [198, 300]], T.cable);
+  curve([[606, 232], [520, 316], [442, 300]], T.cable);
+  curve([[40, 232], [60, 260], [72, 266]], T.cable);
+  curve([[600, 232], [585, 260], [568, 266]], T.cable);
+  curve([[330, 306], [400, 334], [600, 236]], T.cable);
   for (const mx of [262, 380]) { R(mx - 11, 314, 22, 7, '#15121c'); R(mx - 9, 315, 18, 3, '#2a2633'); R(mx - 11, 314, 22, 1, '#3c3646'); }
   R(336, 309, 9, 11, '#efe9dc'); for (let k = 0; k < 4; k++) R(338, 311 + k * 2, 5, 1, '#9a8f80');
   G = g;
 }
 
 const sign = document.createElement('canvas'); sign.width = 170; sign.height = 34;
-(function drawSign() {
-  const sc = sign.getContext('2d'); let x = 8;
-  sc.fillStyle = '#0c0816'; sc.fillRect(0, 0, 170, 34); sc.fillStyle = '#1b1430'; sc.fillRect(1, 1, 168, 32);
+function drawSign() {
+  const T = theme, sc = sign.getContext('2d'); let x = 8;
+  sc.clearRect(0, 0, 170, 34); sc.shadowBlur = 0;
+  sc.fillStyle = T.baseboard; sc.fillRect(0, 0, 170, 34); sc.fillStyle = T.signBg; sc.fillRect(1, 1, 168, 32);
   for (const ch of 'NIRVA ROCK') {
-    const col = x < 76 ? '#ff4fa3' : '#3ef2ff';
+    const col = x < 76 ? T.signA : T.signB;
     sc.shadowColor = col; sc.shadowBlur = 6; sc.fillStyle = col;
     FONT[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') sc.fillRect(x + i * 2, 10 + j * 2, 2, 2); }));
     x += ch === ' ' ? 8 : 12 + (ch === 'I' ? 0 : 3);
   }
-})();
+  sc.shadowBlur = 0;
+}
+drawSign();
 
 const crowd = [];
-(() => { const r = rng(7); for (let i = 0; i < 33; i++) crowd.push({ x: 4 + i * 19.5 + r() * 6, top: 334 + r() * 9, rad: 5 + Math.floor(r() * 2), c: ['#0e0b18', '#120e1f', '#0b0914', '#151127'][i % 4], ph: r() * 6.28, phone: r() < .16 }); })();
+(() => { const r = rng(7); for (let i = 0; i < 33; i++) crowd.push({ x: 4 + i * 19.5 + r() * 6, top: 334 + r() * 9, rad: 5 + Math.floor(r() * 2), i, ph: r() * 6.28, phone: r() < .16 }); })();
 
 // ======================================================================
 //  Estado (um palco só para todas as sessões)
@@ -393,12 +433,24 @@ function getSession(ev) {
   if (!s) {
     const used = new Set([...sessions.values()].map((x) => x.color));
     const color = SESSION_COLORS.find((c) => !used.has(c)) || SESSION_COLORS[sessionSeq % SESSION_COLORS.length];
-    s = { id: ev.session, order: sessionSeq++, project: ev.project || '', color, lastAt: ev.ts, status: 'working', ended: false, endedAt: 0 };
+    s = { id: ev.session, order: sessionSeq++, project: ev.project || '', host: ev.host || '', color, lastAt: ev.ts, status: 'working', ended: false, endedAt: 0 };
     sessions.set(ev.session, s);
   }
   if (!s.project && ev.project) s.project = ev.project;
+  if (!s.host && ev.host) s.host = ev.host;
   return s;
 }
+// <projName>
+// Nome da sessão nos rótulos: com sessões de mais de uma máquina no palco,
+// "projeto @máquina"; com uma só, igual à v1.1. Sessão sem host conta como uma máquina.
+function projName(s, all, fallback) {
+  const name = s.project || fallback || 'Claude';
+  if (!s.host) return name;
+  const hosts = new Set();
+  for (const x of all.values()) if (!x.ended) hosts.add(x.host || '');
+  return hosts.size > 1 ? name + ' @' + s.host : name;
+}
+// </projName>
 const stationOf = (id) => STATIONS.find((s) => s.id === id);
 const keyOf = (sid, id) => sid + '|' + id;
 const membersOf = (sid) => [...members.values()].filter((m) => m.sid === sid);
@@ -593,7 +645,7 @@ function renderChips() {
   const el = document.getElementById('chips');
   const t = now();
   const data = [...sessions.values()].filter((s) => !s.ended).sort((a, b) => a.order - b.order).map((s) => ({
-    id: s.id, name: s.project || 'sessão', color: s.color, st: t - s.lastAt > SLEEP_MS ? 'sleep' : s.status,
+    id: s.id, name: projName(s, sessions, 'sessão'), color: s.color, st: t - s.lastAt > SLEEP_MS ? 'sleep' : s.status,
     n: membersOf(s.id).filter((m) => m.role === 'sub').length, hl: highlight === s.id,
   }));
   const dk = docker.available ? docker.list.length : -1;
@@ -638,7 +690,7 @@ function describe(ev) {
 function pushLog(ev, s, m) {
   if (ev.event === 'PostToolUse') return;
   const sub = m && m.role === 'sub' && ev.event !== 'SubagentStart' && ev.event !== 'SubagentStop';
-  logRows.push({ t: new Date(ev.ts || now()).toTimeString().slice(0, 8), who: sub ? m.label : (s.project || 'Claude'), color: s.color, what: describe(ev) });
+  logRows.push({ t: new Date(ev.ts || now()).toTimeString().slice(0, 8), who: sub ? m.label : projName(s, sessions), color: s.color, what: describe(ev) });
   while (logRows.length > 60) logRows.shift();
   logDirty = true;
 }
@@ -966,13 +1018,13 @@ function drawWalker(m, t) {
 // ======================================================================
 function lights(t) {
   g.globalCompositeOperation = 'lighter';
-  for (const [x, c] of [[170, '255,79,163'], [470, '62,242,255']]) {
+  for (const [x, c] of [[170, theme.washA], [470, theme.washB]]) {
     const gr = g.createRadialGradient(x, 110, 4, x, 110, 170);
     gr.addColorStop(0, `rgba(${c},${.07 + energy * .1 + Math.sin(t * 1.3 + x) * .015})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = gr; g.fillRect(0, 0, W, 240);
   }
   if (energy > .35) {
-    for (const [ox, dir, c] of [[40, 1, '255,79,163'], [600, -1, '62,242,255']]) {
+    for (const [ox, dir, c] of [[40, 1, theme.washA], [600, -1, theme.washB]]) {
       const a = Math.sin(t * .8 * dir) * .55 + dir * .35, len = 380;
       const ex = ox + Math.sin(a) * len, ey = 18 + Math.cos(a) * len;
       const gr = g.createLinearGradient(ox, 18, ex, ey); gr.addColorStop(0, `rgba(${c},${.12 * energy})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
@@ -997,20 +1049,21 @@ function lights(t) {
   g.globalCompositeOperation = 'source-over';
 }
 function leds(t) {
-  for (let x = 232, i = 0; x < 410; x += 6, i++) { const on = energy > .05 ? (Math.sin(t * 6 - i * .5) > 0) : (i % 4 === 0); R(x, 225, 3, 2, on ? '#ff4fa3' : '#4a2038'); }
-  for (let x = 4, i = 0; x < W; x += 10, i++) { const on = energy > .05 ? Math.sin(t * 4 + i * .7) > -.2 : i % 3 === 0; R(x, 324, 4, 1, on ? '#3ef2ff' : '#1b3c44'); }
+  for (let x = 232, i = 0; x < 410; x += 6, i++) { const on = energy > .05 ? (Math.sin(t * 6 - i * .5) > 0) : (i % 4 === 0); R(x, 225, 3, 2, on ? theme.ledRiserOn : theme.ledRiserOff); }
+  for (let x = 4, i = 0; x < W; x += 10, i++) { const on = energy > .05 ? Math.sin(t * 4 + i * .7) > -.2 : i % 3 === 0; R(x, 324, 4, 1, on ? theme.ledEdgeOn : theme.ledEdgeOff); }
 }
 function drawCrowd(t) {
   const cheer = now() < cheerUntil;
   for (const c of crowd) {
+    const cc = theme.crowd[c.i % 4];
     let yy = c.top;
     if (cheer) yy -= Math.round(Math.abs(Math.sin(t * 9 + c.ph)) * 6);
     else if (energy > .05) yy -= Math.round(Math.max(0, Math.sin(t * 5 + c.ph)) * energy * 3);
-    if (cheer || (energy > .6 && Math.sin(t * 2 + c.ph) > .6)) { line(c.x - 8, yy + 11, c.x - 12, yy - 6, c.c, 2); line(c.x + 8, yy + 11, c.x + 12, yy - 6, c.c, 2); }
-    ellipse(c.x, yy + 17, 12, 8, c.c); circ(c.x, yy, c.rad, c.c);
-    R(c.x - 2, yy - c.rad, 4, 1, '#3a2f5a');
+    if (cheer || (energy > .6 && Math.sin(t * 2 + c.ph) > .6)) { line(c.x - 8, yy + 11, c.x - 12, yy - 6, cc, 2); line(c.x + 8, yy + 11, c.x + 12, yy - 6, cc, 2); }
+    ellipse(c.x, yy + 17, 12, 8, cc); circ(c.x, yy, c.rad, cc);
+    R(c.x - 2, yy - c.rad, 4, 1, theme.crowdRim);
     if (c.phone && energy > .3) {
-      const px = c.x + 9, py = yy - 7; line(c.x + 6, yy + 10, px, py + 3, c.c, 2); R(px - 1, py, 3, 4, '#d6ecff');
+      const px = c.x + 9, py = yy - 7; line(c.x + 6, yy + 10, px, py + 3, cc, 2); R(px - 1, py, 3, 4, '#d6ecff');
       g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(180,220,255,.12)'; g.beginPath(); g.arc(px, py + 2, 6, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
     }
   }
@@ -1077,7 +1130,7 @@ function render(tm) {
   }
   items.sort((a, b) => a.y - b.y).forEach((i) => i.draw());
   const anyone = members.size > 0;
-  g.fillStyle = `rgba(6,3,14,${!anyone ? .42 : energy < .05 ? .3 : .18})`; g.fillRect(0, 0, W, 322);
+  g.fillStyle = `rgba(${theme.overlay},${!anyone ? .42 : energy < .05 ? .3 : .18})`; g.fillRect(0, 0, W, 322);
   const flick = Math.sin(t * 13.7) > .97 || (Math.sin(t * .37) > .985 && Math.sin(t * 40) > 0);
   g.globalAlpha = flick ? .45 : 1; g.drawImage(sign, (W - sign.width) / 2, 22); g.globalAlpha = 1;
   for (const p of particles) {
@@ -1093,7 +1146,7 @@ function render(tm) {
   drawCrowd(t);
 
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#07050d'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = theme.pageBg; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.drawImage(low, 0, 0, W, H, view.ox, view.oy, W * view.s, H * view.s);
   drawLabels();
   document.getElementById('empty').classList.toggle('hide', anyone);
@@ -1118,7 +1171,7 @@ function drawLabels() {
     ctx.globalAlpha = highlight && m.sid !== highlight ? .25 : 1;
     const sx = view.ox + m.scr.x * view.s, sy = view.oy + m.scr.y * view.s;
     const A = ACT[m.scr.act] || ACT.idle;
-    let name = m.role === 'leader' ? '🎤 ' + (s.project || 'Claude') : m.label;
+    let name = m.role === 'leader' ? '🎤 ' + projName(s, sessions) : m.label;
     if (name.length > 22) name = name.slice(0, 21) + '…';
     let what = A.verb;
     if (m.detail && m.detail !== what && !['sleep', 'yourturn', 'done', 'idle', 'sing'].includes(m.scr.act)) what += (what ? ' · ' : '') + m.detail;
@@ -1160,7 +1213,7 @@ function powerChord() {
 function alertUser(s, text) {
   chime();
   if (notifyOn && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-    try { new Notification('Nirva Stage: ' + (s.project || 'Claude'), { body: text, tag: 'nirva-' + s.id }); } catch { }
+    try { new Notification('Nirva Stage: ' + projName(s, sessions), { body: text, tag: 'nirva-' + s.id }); } catch { }
   }
 }
 
@@ -1188,12 +1241,106 @@ $('demoStop').onclick = () => stopDemo();
 $('help').onclick = toggleHelp;
 addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (themeMenuOpen) return; // com o menu de temas aberto, só ele trata as teclas
   const k = e.key.toLowerCase();
   if (k === 's') toggleSound(); else if (k === 'n') toggleNotify(); else if (k === 'l') toggleLog();
   else if (k === 'h' || k === '?') toggleHelp(); else if (k === 'f') toggleFull();
   else if (k === 'd') demoOn ? stopDemo() : startDemo('eventos simulados');
+  else if (k === 'c') nextTheme();
   else if (k === 'escape') { $('help').classList.add('hide'); highlight = null; chipsKey = ''; }
 });
+
+// ======================================================================
+//  Temas de cor: menu 🎨, tecla C, ?theme= e escolha lembrada (v1.3).
+//  Trocar de tema só redesenha o cenário (bg e letreiro): sessões,
+//  músicos, partículas e a conexão continuam como estão.
+// ======================================================================
+let themeMenuOpen = false, themeToastTimer = 0;
+function applyTheme(id, { save = false } = {}) {
+  const t = themeById(id);
+  theme = t;
+  drawBG(); drawSign();
+  document.documentElement.style.setProperty('--bg', t.pageBg);
+  document.documentElement.dataset.theme = t.id;
+  syncThemeMenu();
+  if (save) store.set('theme', t.id);
+  return t;
+}
+function themeThumb(t) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 36;
+  const x = c.getContext('2d'), F = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+  F(0, 0, 64, 24, t.wallBase);
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 3; j++) F(i * 8, j * 8, 8, 8, (i + j) % 2 ? t.foamA : t.foamB);
+  F(14, 5, 36, 11, t.baseboard); F(15, 6, 34, 9, t.signBg); F(18, 9, 13, 3, t.signA); F(33, 9, 13, 3, t.signB);
+  F(0, 24, 64, 12, t.floorA);
+  if (t.floorGrid) { for (let y = 24; y < 36; y += 4) F(0, y, 64, 1, t.floorLine); for (let i = 0; i < 64; i += 6) F(i, 24, 1, 12, t.floorLine); }
+  else { F(0, 30, 64, 6, t.floorB); for (let y = 24; y < 36; y += 3) F(0, y, 64, 1, t.floorLine); }
+  return c;
+}
+function buildThemeMenu() {
+  const m = $('themeMenu'); m.textContent = '';
+  for (const t of THEMES) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'menuitemradio'); b.dataset.theme = t.id; b.tabIndex = -1;
+    const tx = document.createElement('span'), nm = document.createElement('span'), tg = document.createElement('small'), ck = document.createElement('span');
+    nm.className = 'nm'; nm.textContent = t.name; tg.textContent = t.tagline; tx.append(nm, tg);
+    ck.className = 'ck'; ck.setAttribute('aria-hidden', 'true');
+    b.append(themeThumb(t), tx, ck);
+    b.onclick = (e) => { e.stopPropagation(); applyTheme(t.id, { save: true }); closeThemeMenu(true); };
+    m.append(b);
+  }
+}
+function syncThemeMenu() {
+  for (const b of $('themeMenu').children) {
+    const on = b.dataset.theme === theme.id;
+    b.setAttribute('aria-checked', String(on)); b.querySelector('.ck').textContent = on ? '✓' : '';
+  }
+}
+function placeThemeMenu() {
+  const r = $('bTheme').getBoundingClientRect(), m = $('themeMenu');
+  m.style.top = Math.round(r.bottom + 8) + 'px'; m.style.right = Math.max(8, Math.round(innerWidth - r.right)) + 'px';
+}
+function focusThemeItem(b) { for (const x of $('themeMenu').children) x.tabIndex = x === b ? 0 : -1; if (b) b.focus(); }
+function openThemeMenu() {
+  themeMenuOpen = true; placeThemeMenu();
+  $('themeMenu').classList.remove('hide'); $('bTheme').setAttribute('aria-expanded', 'true'); $('bTheme').classList.add('on');
+  const items = [...$('themeMenu').children];
+  focusThemeItem(items.find((b) => b.dataset.theme === theme.id) || items[0]);
+}
+function closeThemeMenu(refocus) {
+  if (!themeMenuOpen) return;
+  themeMenuOpen = false;
+  $('themeMenu').classList.add('hide'); $('bTheme').setAttribute('aria-expanded', 'false'); $('bTheme').classList.remove('on');
+  if (refocus) $('bTheme').focus();
+}
+function showThemeToast(t) {
+  const el = $('themeToast'); el.textContent = '🎨 ' + t.name; el.classList.remove('hide');
+  clearTimeout(themeToastTimer); themeToastTimer = setTimeout(() => el.classList.add('hide'), 1500);
+}
+function nextTheme() {
+  const i = THEMES.indexOf(theme);
+  showThemeToast(applyTheme(THEMES[(i + 1) % THEMES.length].id, { save: true }));
+}
+$('bTheme').onclick = (e) => { e.stopPropagation(); themeMenuOpen ? closeThemeMenu(true) : openThemeMenu(); };
+$('themeMenu').addEventListener('keydown', (e) => {
+  const items = [...$('themeMenu').children], i = items.indexOf(document.activeElement);
+  const go = (j) => { e.preventDefault(); focusThemeItem(items[(j + items.length) % items.length]); };
+  if (e.key === 'ArrowDown') go(i + 1);
+  else if (e.key === 'ArrowUp') go(i - 1);
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(items.length - 1);
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeThemeMenu(true); }
+  else if (e.key === 'Tab') closeThemeMenu(false);
+  // Enter e espaço: o próprio botão do item dispara o clique
+});
+addEventListener('click', (e) => { if (themeMenuOpen && !$('themeMenu').contains(e.target) && e.target !== $('bTheme')) closeThemeMenu(false); });
+addEventListener('resize', () => { if (themeMenuOpen) placeThemeMenu(); });
+function initTheme() {
+  buildThemeMenu();
+  // ?theme= força o tema ao abrir, sem gravar; senão, a escolha salva; senão, o padrão
+  const q = new URLSearchParams(location.search).get('theme');
+  applyTheme(q || store.get('theme', THEME_DEFAULT));
+}
 
 // ======================================================================
 //  Doações: PIX (BR Code estático, padrão do Banco Central) e PayPal
@@ -1336,7 +1483,7 @@ async function demoSession(gen, project, delay) {
 }
 
 // ======================================================================
-drawBG();
+initTheme();
 syncButtons();
 connect();
 requestAnimationFrame(frame);
