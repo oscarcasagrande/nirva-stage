@@ -214,7 +214,20 @@ Se os preferidos estiverem ocupados, o agente pega qualquer instrumento livre. S
 **Containers:** a cor vem do projeto do Docker Compose (`com.docker.compose.project`, que por padrão é o nome da pasta). Se bater com a pasta de uma sessão do Claude, o amplificador pega a cor dela.
 O LED fica verde rodando, amarelo com healthcheck iniciando, vermelho com `unhealthy`, âmbar reiniciando e azul pausado. Passe o mouse para ver os detalhes.
 
-**Atalhos:** `S` som · `N` notificações · `L` registro · `D` demo · `F` tela cheia · `H` legenda · clique num projeto no topo para destacá-lo.
+**Atalhos:** `S` som · `N` notificações · `L` registro · `D` demo · `C` tema · `F` tela cheia · `H` legenda · clique num projeto no topo para destacá-lo.
+
+**Temas de cor 🎨:** o botão 🎨 (ou a tecla `C`, que passa para o próximo) troca na hora as cores do cenário: parede, letreiro, luzes, chão, LEDs e plateia. A banda continua tocando. As cores das atividades e dos projetos não mudam, porque carregam significado.
+
+| Tema | Visual |
+|---|---|
+| Neon noturno (padrão) | Roxo com neon rosa e ciano |
+| Synthwave | Laranja, magenta e chão quadriculado |
+| Garagem grunge | Concreto, âmbar quente e ferrugem |
+| Arena gelo | Azul-marinho, branco e gelo |
+| Terminal hacker | Preto com verde fósforo |
+| Clube de jazz | Vinho, dourado e creme |
+
+A escolha fica lembrada no navegador. Para demo ou gravação de vídeo, force um tema pela URL com `?theme=<id>` (`neon`, `synthwave`, `grunge`, `ice`, `hacker` ou `jazz`), por exemplo `http://localhost:4321/?demo&theme=synthwave`. O tema da URL não substitui a escolha salva.
 
 ---
 
@@ -255,6 +268,13 @@ O visual fica em `public/index.html`:
 - Quando o evento de ferramenta não traz `agent_id`, a ação aparece no vocalista em vez de no subagente.
 
 ## 📝 Changelog
+
+### 1.3.0: Temas de cor
+
+- Botão 🎨 com 6 temas de cor do palco: Neon noturno (padrão, igual ao visual anterior), Synthwave, Garagem grunge, Arena gelo, Terminal hacker e Clube de jazz.
+- Tecla `C` para o próximo tema, com um aviso do nome; menu navegável só pelo teclado.
+- A escolha fica salva no navegador; `?theme=<id>` força um tema ao abrir, sem gravar.
+- Troca instantânea, sem perder a banda nem a conexão. Cores das atividades e dos projetos não mudam.
 
 ### 1.2.0: Palco remoto
 

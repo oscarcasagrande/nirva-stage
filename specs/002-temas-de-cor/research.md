@@ -55,12 +55,12 @@ Sem `NEEDS CLARIFICATION` abertos; ver [spec.md › Clarifications](spec.md#clar
 
 - **Decisão**: no `keydown` existente (que já ignora Ctrl/Cmd/Alt), `c` → próximo tema na ordem
   de `THEMES`, com volta, salva e mostra `#themeToast.panel` "🎨 <nome>" por 1,5 s (reinicia o
-  timer). Posição: centralizado no topo, abaixo dos chips (FR-020).
+  timer). Posição: centralizado na base da tela, para não cobrir o letreiro (FR-020).
 
 ## R08. Screenshots e e2e
 
 - **Decisão**: `test/e2e/temas.e2e.js` (Playwright, Chrome do sistema via `channel: 'chrome'`)
   sobe o próprio `server.js` numa porta livre, roda T01–T10 e salva `docs/temas/<id>.png`
-  (`?demo&theme=<id>`, 1280×720, após ~4 s de demo). Executado com
+  (`?demo&theme=<id>`, 1280×720, após ~6 s de demo, fora da "falha" do letreiro em ~4 s). Executado com
   `NODE_PATH=<pasta com playwright>/node_modules node test/e2e/temas.e2e.js` ou depois de
   `npm i --no-save playwright`. Não entra no `package.json`.

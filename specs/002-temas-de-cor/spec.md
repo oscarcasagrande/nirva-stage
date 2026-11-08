@@ -39,10 +39,11 @@ coerente com o PRD, a constituição e o código atual.
   prateleira e do letreiro (RF03/RF04), têm hoje o mesmo valor dessas chaves (Neon idêntico) e
   evitam um contorno roxo em temas como Terminal hacker. Os demais literais do cenário fora de
   `keys` (pôsteres, amplificadores, microfones, holofotes) ficam como estão (fora de escopo).
-- Q: Onde e com que texto aparece o aviso da tecla `C`? → A: Painel `.panel` centralizado no
-  topo, logo abaixo da linha dos chips, com o texto "🎨 <nome do tema>", por 1,5 s; se `C` for
-  apertado de novo antes, o aviso é reiniciado. Motivo: segue o padrão visual dos painéis e não
-  cobre o palco nem o registro.
+- Q: Onde e com que texto aparece o aviso da tecla `C`? → A: Painel `.panel` centralizado na
+  base da tela (entre o banner do demo e o registro), com o texto "🎨 <nome do tema>", por 1,5 s;
+  se `C` for apertado de novo antes, o aviso é reiniciado. Motivo: segue o padrão visual dos
+  painéis e não cobre o letreiro nem o registro. (Ajuste feito na implementação: a primeira
+  escolha, no topo abaixo dos chips, cobria o letreiro "NIRVA ROCK" no screenshot.)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -194,8 +195,9 @@ do mesmo jeito.
   a cada 20 px (resolução lógica 640×360), sem perspectiva.
 - **FR-019** (clarificação): A sombra das prateleiras MUST usar `brick` e a moldura externa do
   letreiro MUST usar `baseboard`; os demais literais fora de `keys` não mudam.
-- **FR-020** (clarificação): O aviso da tecla `C` MUST aparecer centralizado no topo, abaixo dos
-  chips, com o texto "🎨 <nome do tema>", por 1,5 s, reiniciando se `C` for apertado de novo.
+- **FR-020** (clarificação): O aviso da tecla `C` MUST aparecer centralizado na base da tela, com
+  o texto "🎨 <nome do tema>", por 1,5 s, reiniciando se `C` for apertado de novo, sem cobrir o
+  letreiro nem o registro.
 
 ### Key Entities
 
