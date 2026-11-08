@@ -74,3 +74,26 @@ test('Fora de escopo: ACT e SESSION_COLORS continuam com as cores da v1.2', () =
 // cores de ACT na v1.2, na ordem em que aparecem (capturadas antes da feature)
 const ACT_V12 = ['#c9c3e6', '#6ec6ff', '#ff5fa2', '#ffb547', '#7dff9a', '#b48cff', '#ffffff', '#ffe66d', '#9ad7ff',
   '#ff4fa3', '#ffb000', '#ff3b3b', '#3ef2ff', '#3ef2ff', '#6b6488'];
+
+test('FR-013: a legenda (H) cita a tecla C e o menu 🎨', () => {
+  const help = HTML.slice(HTML.indexOf('<div id="help"'), HTML.indexOf('</div>', HTML.indexOf('<div id="help"')));
+  assert.match(help, /<kbd>C<\/kbd>/);
+  assert.match(help, /🎨/);
+});
+
+test('FR-013: o README cita a tecla C, o menu 🎨, ?theme= e os 6 temas', () => {
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  assert.match(readme, /`C`/);
+  assert.match(readme, /🎨/);
+  assert.match(readme, /\?theme=/);
+  for (const t of JSON_THEMES.themes) assert.ok(readme.includes(t.name), `README sem o tema ${t.name}`);
+});
+
+test('UI: botão 🎨 antes do 🔇, com title e menu acessível (contrato)', () => {
+  const ctrl = HTML.slice(HTML.indexOf('<div id="ctrl"'), HTML.indexOf('</div>', HTML.indexOf('<div id="ctrl"')));
+  assert.ok(ctrl.indexOf('id="bTheme"') >= 0 && ctrl.indexOf('id="bTheme"') < ctrl.indexOf('id="bSound"'), '🎨 deve vir antes do 🔇');
+  assert.match(ctrl, /title="Tema do palco \(C\)"/);
+  assert.match(HTML, /id="themeMenu"[^>]*role="menu"/);
+  assert.match(HTML, /'menuitemradio'/);
+  assert.match(HTML, /id="themeToast"[^>]*role="status"/);
+});

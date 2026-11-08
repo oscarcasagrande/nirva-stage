@@ -58,6 +58,15 @@
   #help .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
   #help kbd{background:rgba(255,255,255,.1);border-radius:4px;padding:0 5px}
   #ctrl button.hide{display:none}
+  #themeMenu{position:fixed;top:56px;right:12px;z-index:6;padding:6px;width:300px;max-width:calc(100vw - 16px)}
+  #themeMenu.hide,#themeToast.hide{display:none}
+  #themeMenu button{all:unset;box-sizing:border-box;display:flex;gap:10px;align-items:center;width:100%;padding:6px 8px;border-radius:7px;cursor:pointer}
+  #themeMenu button:hover,#themeMenu button:focus-visible{background:rgba(255,255,255,.08)}
+  #themeMenu button:focus-visible{box-shadow:0 0 0 1px var(--cyan)}
+  #themeMenu canvas{width:64px;height:36px;image-rendering:pixelated;border-radius:4px;flex:none;border:1px solid var(--line)}
+  #themeMenu .nm{display:block;font-weight:600} #themeMenu small{color:var(--dim);font-size:11px}
+  #themeMenu .ck{margin-left:auto;width:14px;flex:none;color:var(--green)}
+  #themeToast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:6px 12px;z-index:6;font-size:12px;pointer-events:none}
   #ctrl button.donate{background:linear-gradient(135deg,rgba(255,79,163,.25),rgba(62,242,255,.2))}
   #donate{position:fixed;inset:0;z-index:7;display:grid;place-items:center;background:rgba(4,2,10,.6)}
   #donate.hide{display:none}
@@ -80,6 +89,7 @@
 <div id="brand" class="panel"><b>NIRVA STAGE</b><span id="conn"><i></i><span>conectando…</span></span></div>
 <div id="chips"></div>
 <div id="ctrl" class="panel">
+  <button id="bTheme" title="Tema do palco (C)" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu">🎨</button>
   <button id="bSound" title="Som (S)">🔇</button>
   <button id="bNotify" title="Notificações do navegador quando o Claude espera você (N)">🔕</button>
   <button id="bLog" title="Registro de eventos (L)" class="on">📜</button>
@@ -109,6 +119,8 @@
 <div id="empty" class="panel"><b>Palco vazio</b><br><span>Abra o Claude Code num terminal: a banda sobe ao palco no primeiro evento. 🎸</span></div>
 <div id="demoBanner" class="panel hide"><b>MODO DEMO</b><span id="demoWhy">eventos simulados</span><button id="demoStop">parar</button></div>
 <div id="tip" class="panel hide"></div>
+<div id="themeMenu" class="panel hide" role="menu" aria-label="Tema do palco"></div>
+<div id="themeToast" class="panel hide" role="status" aria-live="polite"></div>
 <div id="help" class="panel hide">
   <h3>Legenda do palco</h3>
   <table>
@@ -124,7 +136,7 @@
     <tr><td><span class="sw" style="background:#3ef2ff"></span>sua vez</td><td>fim do turno: reverência, confete e a plateia pulando</td></tr>
     <tr><td>💤</td><td>5 min sem eventos: o músico cochila</td></tr>
   </table>
-  <p style="color:var(--dim);margin:10px 0 0">Atalhos: <kbd>S</kbd> som · <kbd>N</kbd> notificações · <kbd>L</kbd> registro · <kbd>D</kbd> demo · <kbd>F</kbd> tela cheia · <kbd>H</kbd> legenda · clique num projeto no topo para destacá-lo</p>
+  <p style="color:var(--dim);margin:10px 0 0">Atalhos: <kbd>S</kbd> som · <kbd>N</kbd> notificações · <kbd>L</kbd> registro · <kbd>D</kbd> demo · <kbd>C</kbd> tema (ou o menu 🎨) · <kbd>F</kbd> tela cheia · <kbd>H</kbd> legenda · clique num projeto no topo para destacá-lo</p>
 </div>
 
 <script src="vendor/qrcode.js"></script>
@@ -1229,12 +1241,106 @@ $('demoStop').onclick = () => stopDemo();
 $('help').onclick = toggleHelp;
 addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (themeMenuOpen) return; // com o menu de temas aberto, só ele trata as teclas
   const k = e.key.toLowerCase();
   if (k === 's') toggleSound(); else if (k === 'n') toggleNotify(); else if (k === 'l') toggleLog();
   else if (k === 'h' || k === '?') toggleHelp(); else if (k === 'f') toggleFull();
   else if (k === 'd') demoOn ? stopDemo() : startDemo('eventos simulados');
+  else if (k === 'c') nextTheme();
   else if (k === 'escape') { $('help').classList.add('hide'); highlight = null; chipsKey = ''; }
 });
+
+// ======================================================================
+//  Temas de cor: menu 🎨, tecla C, ?theme= e escolha lembrada (v1.3).
+//  Trocar de tema só redesenha o cenário (bg e letreiro): sessões,
+//  músicos, partículas e a conexão continuam como estão.
+// ======================================================================
+let themeMenuOpen = false, themeToastTimer = 0;
+function applyTheme(id, { save = false } = {}) {
+  const t = themeById(id);
+  theme = t;
+  drawBG(); drawSign();
+  document.documentElement.style.setProperty('--bg', t.pageBg);
+  document.documentElement.dataset.theme = t.id;
+  syncThemeMenu();
+  if (save) store.set('theme', t.id);
+  return t;
+}
+function themeThumb(t) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 36;
+  const x = c.getContext('2d'), F = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+  F(0, 0, 64, 24, t.wallBase);
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 3; j++) F(i * 8, j * 8, 8, 8, (i + j) % 2 ? t.foamA : t.foamB);
+  F(14, 5, 36, 11, t.baseboard); F(15, 6, 34, 9, t.signBg); F(18, 9, 13, 3, t.signA); F(33, 9, 13, 3, t.signB);
+  F(0, 24, 64, 12, t.floorA);
+  if (t.floorGrid) { for (let y = 24; y < 36; y += 4) F(0, y, 64, 1, t.floorLine); for (let i = 0; i < 64; i += 6) F(i, 24, 1, 12, t.floorLine); }
+  else { F(0, 30, 64, 6, t.floorB); for (let y = 24; y < 36; y += 3) F(0, y, 64, 1, t.floorLine); }
+  return c;
+}
+function buildThemeMenu() {
+  const m = $('themeMenu'); m.textContent = '';
+  for (const t of THEMES) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'menuitemradio'); b.dataset.theme = t.id; b.tabIndex = -1;
+    const tx = document.createElement('span'), nm = document.createElement('span'), tg = document.createElement('small'), ck = document.createElement('span');
+    nm.className = 'nm'; nm.textContent = t.name; tg.textContent = t.tagline; tx.append(nm, tg);
+    ck.className = 'ck'; ck.setAttribute('aria-hidden', 'true');
+    b.append(themeThumb(t), tx, ck);
+    b.onclick = (e) => { e.stopPropagation(); applyTheme(t.id, { save: true }); closeThemeMenu(true); };
+    m.append(b);
+  }
+}
+function syncThemeMenu() {
+  for (const b of $('themeMenu').children) {
+    const on = b.dataset.theme === theme.id;
+    b.setAttribute('aria-checked', String(on)); b.querySelector('.ck').textContent = on ? '✓' : '';
+  }
+}
+function placeThemeMenu() {
+  const r = $('bTheme').getBoundingClientRect(), m = $('themeMenu');
+  m.style.top = Math.round(r.bottom + 8) + 'px'; m.style.right = Math.max(8, Math.round(innerWidth - r.right)) + 'px';
+}
+function focusThemeItem(b) { for (const x of $('themeMenu').children) x.tabIndex = x === b ? 0 : -1; if (b) b.focus(); }
+function openThemeMenu() {
+  themeMenuOpen = true; placeThemeMenu();
+  $('themeMenu').classList.remove('hide'); $('bTheme').setAttribute('aria-expanded', 'true'); $('bTheme').classList.add('on');
+  const items = [...$('themeMenu').children];
+  focusThemeItem(items.find((b) => b.dataset.theme === theme.id) || items[0]);
+}
+function closeThemeMenu(refocus) {
+  if (!themeMenuOpen) return;
+  themeMenuOpen = false;
+  $('themeMenu').classList.add('hide'); $('bTheme').setAttribute('aria-expanded', 'false'); $('bTheme').classList.remove('on');
+  if (refocus) $('bTheme').focus();
+}
+function showThemeToast(t) {
+  const el = $('themeToast'); el.textContent = '🎨 ' + t.name; el.classList.remove('hide');
+  clearTimeout(themeToastTimer); themeToastTimer = setTimeout(() => el.classList.add('hide'), 1500);
+}
+function nextTheme() {
+  const i = THEMES.indexOf(theme);
+  showThemeToast(applyTheme(THEMES[(i + 1) % THEMES.length].id, { save: true }));
+}
+$('bTheme').onclick = (e) => { e.stopPropagation(); themeMenuOpen ? closeThemeMenu(true) : openThemeMenu(); };
+$('themeMenu').addEventListener('keydown', (e) => {
+  const items = [...$('themeMenu').children], i = items.indexOf(document.activeElement);
+  const go = (j) => { e.preventDefault(); focusThemeItem(items[(j + items.length) % items.length]); };
+  if (e.key === 'ArrowDown') go(i + 1);
+  else if (e.key === 'ArrowUp') go(i - 1);
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(items.length - 1);
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeThemeMenu(true); }
+  else if (e.key === 'Tab') closeThemeMenu(false);
+  // Enter e espaço: o próprio botão do item dispara o clique
+});
+addEventListener('click', (e) => { if (themeMenuOpen && !$('themeMenu').contains(e.target) && e.target !== $('bTheme')) closeThemeMenu(false); });
+addEventListener('resize', () => { if (themeMenuOpen) placeThemeMenu(); });
+function initTheme() {
+  buildThemeMenu();
+  // ?theme= força o tema ao abrir, sem gravar; senão, a escolha salva; senão, o padrão
+  const q = new URLSearchParams(location.search).get('theme');
+  applyTheme(q || store.get('theme', THEME_DEFAULT));
+}
 
 // ======================================================================
 //  Doações: PIX (BR Code estático, padrão do Banco Central) e PayPal
@@ -1377,7 +1483,7 @@ async function demoSession(gen, project, delay) {
 }
 
 // ======================================================================
-drawBG();
+initTheme();
 syncButtons();
 connect();
 requestAnimationFrame(frame);
