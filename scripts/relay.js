@@ -111,8 +111,9 @@ function main() {
     while (queue.length) {
       const status = await postEvent(target, token, queue.peek());
       if (status >= 200 && status < 300) {
+        const remaining = queue.length;
         queue.shift();
-        if (offline) { offline = false; console.log(`Palco de volta: enviando ${queue.length + 1} evento(s) guardado(s).`); }
+        if (offline) { offline = false; console.log(`Palco de volta: enviando ${remaining} evento(s) guardado(s).`); }
         continue;
       }
       if (status === 401) {
